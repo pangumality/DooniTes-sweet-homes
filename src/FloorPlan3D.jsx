@@ -42,7 +42,7 @@ export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], 
     if (viewMode === 'exterior') {
         scene.background = new THREE.Color("#f5f5f5"); // Clean White/Grey for exterior render
     } else {
-        scene.background = new THREE.Color("#1e1b2e"); // Dark/Navy for floorplan
+        scene.background = new THREE.Color("#f6f7fb");
     }
 
     // Ground Plane

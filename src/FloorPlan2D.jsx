@@ -73,7 +73,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                 y={isTop || isBottom ? cy - 2 : cy - r/2} 
                 width={isLeft || isRight ? 4 : r} 
                 height={isTop || isBottom ? 4 : r} 
-                fill="#1e1b2e" 
+                fill="var(--surface)" 
             />
             {/* Swing Arc & Leaf */}
             <path d={path} stroke="#38bdf8" fill="none" strokeWidth="1.5" />
@@ -86,10 +86,10 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
     <svg id={`floor-plan-svg-${floor}`} width="600" height="600" style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "16px" }}> 
       <defs>
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#332f46" strokeWidth="1"/>
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--border)" strokeWidth="1"/>
           </pattern>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+            <polygon points="0 0, 10 3.5, 0 7" fill="var(--text-light)" />
           </marker>
       </defs>
       <rect width="100%" height="100%" fill="url(#grid)" />
@@ -99,10 +99,10 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
         x={0} y={0} 
         width={plotWidth * scale} height={plotDepth * scale} 
         fill="none" 
-        stroke="#d946ef" 
+        stroke="var(--primary)" 
         strokeWidth="2" 
         strokeDasharray="10 5"
-        style={{filter: 'drop-shadow(0 0 5px rgba(217, 70, 239, 0.5))'}}
+        style={{filter: 'drop-shadow(0 0 5px rgba(37, 99, 235, 0.25))'}}
       />
 
       {/* Rooms */} 
@@ -134,9 +134,8 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                 y={centerY - 5} 
                 fontSize="12" 
                 fontWeight="bold"
-                fill="white"
+                fill="var(--text)"
                 textAnchor="middle"
-                style={{textShadow: '0 1px 2px rgba(0,0,0,0.8)'}}
             > 
               {room.type ? room.type.charAt(0).toUpperCase() + room.type.slice(1) : "Room"} 
             </text> 
@@ -144,7 +143,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                 x={centerX} 
                 y={centerY + 10} 
                 fontSize="10" 
-                fill="#e2e8f0"
+                fill="var(--text-light)"
                 textAnchor="middle"
             > 
               {Math.round(room.w)}' x {Math.round(room.h)}' 
@@ -165,7 +164,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                   width={s.w * scale} 
                   height={s.h * scale} 
                   fill="url(#grid)" 
-                  stroke="#94a3b8" 
+                  stroke="var(--text-light)" 
                   strokeWidth="1"
               />
               {/* Stair Steps */}
@@ -176,11 +175,11 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                       y1={(s.y + stepI * (s.h/8)) * scale} 
                       x2={(s.x + s.w) * scale} 
                       y2={(s.y + stepI * (s.h/8)) * scale} 
-                      stroke="#475569" 
+                      stroke="var(--text-light)" 
                       strokeWidth="1"
                   />
               ))}
-              <text x={(s.x + s.w/2) * scale} y={(s.y + s.h/2) * scale} fill="#94a3b8" fontSize="10" textAnchor="middle">UP</text>
+              <text x={(s.x + s.w/2) * scale} y={(s.y + s.h/2) * scale} fill="var(--text-light)" fontSize="10" textAnchor="middle">UP</text>
           </g>
       ))}
 
@@ -192,7 +191,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
               y={c.y * scale - 2} 
               width="4" 
               height="4" 
-              fill="#ef4444" 
+              fill="var(--danger)" 
           />
       ))}
 
