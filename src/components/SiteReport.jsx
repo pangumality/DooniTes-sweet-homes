@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function SiteReport({ site, soil, zone, cost, earthquakeRecs }) { 
+export default function SiteReport({ site, soil, kaegroSoil, zone, cost, earthquakeRecs }) { 
   if (!site || !soil || !zone || !cost) return null;
 
   return ( 
@@ -33,6 +33,7 @@ export default function SiteReport({ site, soil, zone, cost, earthquakeRecs }) {
                   </div>
               </div>
           </div>
+
 
           {/* Compliance */}
           <div>
@@ -69,4 +70,4 @@ export default function SiteReport({ site, soil, zone, cost, earthquakeRecs }) {
       </div>
     </div> 
   ); 
-} 
+}

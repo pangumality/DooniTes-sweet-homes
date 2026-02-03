@@ -1,7 +1,8 @@
 import { exportDXF } from "./export/dxfExporter";
-import { Download, Video, FileCode, Image } from "lucide-react";
+import { exportSoilReportPDF } from "./export/pdfExporter";
+import { Download, Video, FileCode, Image, FileText } from "lucide-react";
 
-export default function ExportPanel({ data, floor }) {
+export default function ExportPanel({ data, floor, reportData }) {
   
   const handleCaptureImage = () => {
     const canvas = document.getElementById("floor-plan-3d-canvas");
@@ -36,6 +37,14 @@ export default function ExportPanel({ data, floor }) {
 
   const handleExportDXF = () => {
       exportDXF(data.rooms, data.stairs, data.extras, data.columns);
+  };
+
+  const handleExportReport = () => {
+    if (!reportData) {
+        alert("Report data not available yet.");
+        return;
+    }
+    exportSoilReportPDF(reportData);
   };
 
   const handleRecordWalkthrough = () => {
@@ -96,6 +105,9 @@ export default function ExportPanel({ data, floor }) {
         </button>
         <button className="btn-secondary" onClick={handleExportDXF} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
             <Download size={18} /> Export DXF (CAD)
+        </button>
+        <button className="btn-secondary" onClick={handleExportReport} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
+            <FileText size={18} /> Export Soil & Site Report (PDF)
         </button>
         <button className="btn-secondary" onClick={handleRecordWalkthrough} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
             <Video size={18} /> Record 3D Walkthrough (10s)

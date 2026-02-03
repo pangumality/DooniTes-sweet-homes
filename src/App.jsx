@@ -9,6 +9,7 @@ import { generateColumns } from "./structure/columns";
 
 import ExportPanel from "./ExportPanel";
 import SiteLocation from "./components/SiteLocation";
+import SoilData from "./SoilData";
 import SiteReport from "./components/SiteReport";
 import { analyzeSoil } from "./analysis/soil";
 import { getEarthquakeZone, earthquakeRecommendations } from "./analysis/earthquake";
@@ -62,7 +63,19 @@ export default function App() {
       setLoading(true);
       
       // Simulate processing time for animation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      let kaegroSoil = null;
+      if (siteLocation) {
+        try {
+            const res = await fetch(`/api/kaegro/farms/api/soil?lat=${siteLocation.lat}&lon=${siteLocation.lng}`);
+            if(res.ok) {
+                kaegroSoil = await res.json();
+            }
+        } catch(err) {
+            console.error("Kaegro API Error:", err);
+        }
+      }
 
       const result = generatePlan(formData);
       
@@ -94,6 +107,7 @@ export default function App() {
           setReportData({
               site: siteLocation,
               soil,
+              kaegroSoil,
               zone,
               earthquakeRecs,
               cost
@@ -508,7 +522,7 @@ export default function App() {
                         {reportData && <SiteReport {...reportData} />}
 
                         <div style={{marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px'}}>
-                            <ExportPanel data={data} floor={floor} />
+                            <ExportPanel data={data} floor={floor} reportData={reportData} />
                         </div>
 
                         <button 
