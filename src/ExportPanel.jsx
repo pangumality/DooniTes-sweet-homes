@@ -94,23 +94,27 @@ export default function ExportPanel({ data, floor, reportData }) {
   };
 
   return (
-    <div style={{ marginTop: '20px' }}>
-      <h3 style={{fontSize: '1rem', color: 'var(--primary)', marginTop: 0}}>Export & Share</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <button className="btn-secondary" onClick={handleCaptureImage} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <Image size={18} /> Capture 3D Image
+    <div className="export-panel">
+      <div className="export-panel__list">
+        <button className="btn-secondary export-panel__btn" onClick={handleCaptureImage}>
+          <span className="export-panel__icon" aria-hidden="true"><Image size={18} /></span>
+          <span>Capture 3D Image</span>
         </button>
-        <button className="btn-secondary" onClick={handleExportSVG} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <FileCode size={18} /> Export SVG (Floor {floor + 1})
+        <button className="btn-secondary export-panel__btn" onClick={handleExportSVG}>
+          <span className="export-panel__icon" aria-hidden="true"><FileCode size={18} /></span>
+          <span>Export SVG (Floor {floor + 1})</span>
         </button>
-        <button className="btn-secondary" onClick={handleExportDXF} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <Download size={18} /> Export DXF (CAD)
+        <button className="btn-secondary export-panel__btn" onClick={handleExportDXF}>
+          <span className="export-panel__icon" aria-hidden="true"><Download size={18} /></span>
+          <span>Export DXF (CAD)</span>
         </button>
-        <button className="btn-secondary" onClick={handleExportReport} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <FileText size={18} /> Export Soil & Site Report (PDF)
+        <button className="btn-secondary export-panel__btn" onClick={handleExportReport}>
+          <span className="export-panel__icon" aria-hidden="true"><FileText size={18} /></span>
+          <span>Export Soil & Site Report (PDF)</span>
         </button>
-        <button className="btn-secondary" onClick={handleRecordWalkthrough} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <Video size={18} /> Record 3D Walkthrough (10s)
+        <button className="btn-secondary export-panel__btn" onClick={handleRecordWalkthrough}>
+          <span className="export-panel__icon" aria-hidden="true"><Video size={18} /></span>
+          <span>Record 3D Walkthrough (10s)</span>
         </button>
       </div>
     </div>
