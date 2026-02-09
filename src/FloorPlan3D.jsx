@@ -1,34 +1,65 @@
-import { useEffect, useRef } from "react"; 
+import React, { useEffect, useRef } from "react"; 
 import * as THREE from "three"; 
 
-function loadSVGTexture(url, onLoad) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = url;
+function addCarImage({ scene, url, position, y = 0.02, rotationY = 0, width = 4.8, height = 2.2 }) {
+  const loader = new THREE.TextureLoader();
 
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 512; // wide aspect for car
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    const texture = new THREE.CanvasTexture(canvas);
+  loader.load(url, (texture) => {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 16;
 
-    onLoad(texture);
-  };
-  
-  img.onerror = (err) => {
-      console.error("Failed to load texture:", url, err);
-      // Fallback or just ignore, but at least log it
-  };
+    const material = new THREE.MeshStandardMaterial({
+      map: texture,
+      transparent: true,
+      roughness: 0.4,
+      metalness: 0.1
+    });
+
+    const carPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height),
+      material
+    );
+
+    // Lay flat on ground
+    carPlane.rotation.x = -Math.PI / 2;
+    carPlane.rotation.z = rotationY;
+
+    // Slight lift to avoid z-fighting
+    carPlane.position.set(position.x, y, position.z);
+
+    carPlane.receiveShadow = true;
+
+    scene.add(carPlane);
+
+    // Soft ground shadow
+    const shadow = new THREE.Mesh(
+        new THREE.PlaneGeometry(width * 1.1, height * 1.1),
+        new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.25
+        })
+    );
+    
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.rotation.z = rotationY;
+    shadow.position.set(position.x, y - 0.01, position.z);
+    scene.add(shadow);
+  });
 }
 
-export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], plotWidth, plotDepth, viewMode = 'floorplan' }) { 
+export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], plotWidth, plotDepth, viewMode = 'floorplan', animationMode = 'none' }) { 
   const mountRef = useRef(); 
+  
+  const animationModeRef = useRef(animationMode);
+  const startTimeRef = useRef(Date.now());
+
+  useEffect(() => {
+      animationModeRef.current = animationMode;
+      if (animationMode !== 'none') {
+          startTimeRef.current = Date.now();
+      }
+  }, [animationMode]);
 
   useEffect(() => { 
     if (mountRef.current) {
@@ -504,7 +535,7 @@ export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], 
         const cy = room.floor * 10 + 1; 
         const cz = room.y + room.h / 2;
 
-        if (room.type.includes("bedroom")) {
+        if (room.type.includes("bedroom") || room.type.includes("guest")) {
             const bed = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 7), new THREE.MeshStandardMaterial({ color: "#ffffff" }));
             bed.position.set(cx, cy + 0.75, cz);
             bed.castShadow = true;
@@ -539,25 +570,84 @@ export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], 
     rooms.forEach(room => { 
       if (room.floor > maxFloor) maxFloor = room.floor;
 
-      // Update bounds for this floor
-      if (!floorBounds[room.floor]) {
-          floorBounds[room.floor] = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+      const isOutdoor = room.type === 'garden' || room.type === 'parking' || room.type === 'garage';
+
+      // Update bounds for this floor (Skip for outdoor so roof doesn't cover them)
+      if (!isOutdoor) {
+        if (!floorBounds[room.floor]) {
+            floorBounds[room.floor] = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+        }
+        const b = floorBounds[room.floor];
+        b.minX = Math.min(b.minX, room.x);
+        b.maxX = Math.max(b.maxX, room.x + room.w);
+        b.minZ = Math.min(b.minZ, room.y);
+        b.maxZ = Math.max(b.maxZ, room.y + room.h);
       }
-      const b = floorBounds[room.floor];
-      b.minX = Math.min(b.minX, room.x);
-      b.maxX = Math.max(b.maxX, room.x + room.w);
-      b.minZ = Math.min(b.minZ, room.y);
-      b.maxZ = Math.max(b.maxZ, room.y + room.h);
 
       const wallThickness = viewMode === 'exterior' ? 0.3 : 0.8;
       const floorY = room.floor * 10;
 
       // Floor Slab
-      const floorGeo = new THREE.BoxGeometry(room.w, 0.5, room.h);
-      const floorMesh = new THREE.Mesh(floorGeo, floorMaterial);
-      floorMesh.position.set(room.x + room.w / 2, floorY + 0.25, room.y + room.h / 2);
+      let currentFloorMaterial = floorMaterial;
+      let floorThickness = 0.5;
+      let floorYOffset = 0.25;
+
+      if (room.type === 'garden') {
+           const gardenTexture = grassTexture.clone();
+           gardenTexture.wrapS = THREE.RepeatWrapping;
+           gardenTexture.wrapT = THREE.RepeatWrapping;
+           gardenTexture.repeat.set(Math.max(1, room.w / 20), Math.max(1, room.h / 20));
+           currentFloorMaterial = new THREE.MeshStandardMaterial({ map: gardenTexture, roughness: 1 });
+           floorThickness = 0.2;
+           floorYOffset = 0.1;
+      } else if (room.type === 'parking' || room.type === 'garage') {
+           currentFloorMaterial = new THREE.MeshStandardMaterial({ color: "#e0e0e0" });
+           floorThickness = 0.2;
+           floorYOffset = 0.1;
+      }
+
+      const floorGeo = new THREE.BoxGeometry(room.w, floorThickness, room.h);
+      const floorMesh = new THREE.Mesh(floorGeo, currentFloorMaterial);
+      floorMesh.position.set(room.x + room.w / 2, floorY + floorYOffset, room.y + room.h / 2);
       floorMesh.receiveShadow = true;
       scene.add(floorMesh);
+
+      // Skip Walls for Outdoor
+      if (isOutdoor) {
+          // Add outdoor features (Trees/Cars)
+          if(room.type === "garden") {
+              const treeCount = Math.floor((room.w * room.h) / 50); 
+              for(let i=0; i<treeCount; i++) {
+                  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 3, 8), new THREE.MeshStandardMaterial({ color: "#5d4037" }));
+                  const tx = room.x + Math.random() * room.w;
+                  const ty = room.y + Math.random() * room.h;
+                  trunk.position.set(tx, room.floor * 10 + 1.5, ty);
+                  trunk.castShadow = true;
+                  scene.add(trunk);
+                  const leaves = new THREE.Mesh(new THREE.ConeGeometry(2, 6, 8), new THREE.MeshStandardMaterial({ color: "#2e7d32" }));
+                  leaves.position.set(tx, room.floor * 10 + 4.5, ty);
+                  leaves.castShadow = true;
+                  scene.add(leaves);
+              }
+          }
+          if(room.type === "parking" || room.type === "garage") {
+              const centerX = room.x + room.w / 2;
+              const centerZ = room.y + room.h / 2;
+              const isVertical = room.h > room.w;
+              const carY = room.floor * 10 + 0.22; 
+              
+              addCarImage({
+                  scene,
+                  url: "/icons/vecteezy_car-3d-illustration-icon_28213286.png",
+                  position: { x: centerX, z: centerZ },
+                  y: carY,
+                  rotationY: isVertical ? Math.PI / 2 : 0,
+                  width: 4.8,
+                  height: 2.2
+              });
+          }
+          return; // Skip walls/doors/windows/furniture
+      }
 
       // Determine accent wall
       let mat = wallWhiteMaterial;
@@ -777,52 +867,69 @@ export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], 
           const centerX = e.x + e.w / 2;
           const centerZ = e.y + e.h / 2;
           const isVertical = e.h > e.w;
-
-          loadSVGTexture("/textures/car.svg", (carTexture) => { 
-             const carMaterial = new THREE.MeshStandardMaterial({ 
-                 map: carTexture, 
-                 transparent: true, 
-                 roughness: 0.4, 
-                 metalness: 0.2 
-             }); 
+          const carY = e.floor * 10 + 0.22; // On top of parking mesh (0.1 center + 0.1 half-height + margin)
           
-             const car = new THREE.Mesh( 
-                 new THREE.PlaneGeometry(18, 7.2), // realistic car proportions 
-                 carMaterial 
-             ); 
-          
-             car.rotation.x = -Math.PI / 2; 
-             
-             // Orient car with the parking spot
-             if (isVertical) {
-                 car.rotation.z = Math.PI / 2;
-             }
-
-             car.position.set( 
-                 centerX, 
-                 e.floor * 10 + 0.22,              // Raise above the parking slab (height 0.2) 
-                 centerZ 
-             ); 
-          
-             car.receiveShadow = true; 
-          
-             scene.add(car); 
+          addCarImage({
+              scene,
+              url: "/icons/vecteezy_car-3d-illustration-icon_28213286.png",
+              position: { x: centerX, z: centerZ },
+              y: carY,
+              rotationY: isVertical ? Math.PI / 2 : 0,
+              width: 4.8,
+              height: 2.2
           });
       }
     }); 
 
     let animationId;
     const animate = () => { 
-      // Rotation logic
-      const time = Date.now() * 0.0002;
-      // If exterior, maybe slower rotation or just static? Keep rotation.
-      // Adjust center of rotation
-      const rotX = centerX + (viewMode === 'exterior' ? maxDim * 1.5 : cameraRadius) * Math.cos(time);
-      const rotZ = centerZ + (viewMode === 'exterior' ? maxDim * 1.5 : cameraRadius) * Math.sin(time);
+      const mode = animationModeRef.current;
+      const now = Date.now();
       
-      camera.position.x = rotX;
-      camera.position.z = rotZ;
-      camera.lookAt(centerX, 0, centerZ); // Look at center of house
+      let camX, camY, camZ;
+      let targetX = centerX;
+      let targetY = 0;
+      let targetZ = centerZ;
+      
+      const defaultCamHeight = maxDim * 1.2;
+
+      if (mode === 'orbit') {
+          // 360 Drone View (15s full loop)
+          const elapsed = now - startTimeRef.current;
+          const angle = (elapsed / 15000) * Math.PI * 2; 
+          const radius = viewMode === 'exterior' ? maxDim * 1.5 : cameraRadius;
+          
+          camX = centerX + radius * Math.cos(angle);
+          camZ = centerZ + radius * Math.sin(angle);
+          camY = viewMode === 'exterior' ? maxDim * 0.8 : defaultCamHeight;
+      } else if (mode === 'walkthrough') {
+          // Interior Walkthrough (15s path)
+          const elapsed = now - startTimeRef.current;
+          const t = (elapsed / 15000) * Math.PI * 2;
+          
+          const pathW = Math.min(plotWidth, plotDepth) * 0.3; 
+          
+          camX = centerX + Math.sin(t) * pathW;
+          camZ = centerZ + Math.sin(t * 2) * pathW; // Figure 8
+          camY = 5.5; // Eye level
+
+          const nextT = t + 0.1;
+          targetX = centerX + Math.sin(nextT) * pathW;
+          targetZ = centerZ + Math.sin(nextT * 2) * pathW;
+          targetY = 5.5;
+      } else {
+          // Idle Animation (Slow Rotation)
+          const time = now * 0.0001; 
+          const radius = viewMode === 'exterior' ? maxDim * 1.5 : cameraRadius;
+          camX = centerX + radius * Math.cos(time);
+          camZ = centerZ + radius * Math.sin(time);
+          camY = viewMode === 'exterior' ? maxDim * 0.6 : defaultCamHeight;
+      }
+
+      camera.position.x = camX;
+      camera.position.y = camY;
+      camera.position.z = camZ;
+      camera.lookAt(targetX, targetY, targetZ);
       
       renderer.render(scene, camera); 
       animationId = requestAnimationFrame(animate); 

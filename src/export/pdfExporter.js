@@ -59,21 +59,32 @@ export const exportSoilReportPDF = (reportData) => {
   doc.setTextColor(60, 60, 60);
   
   if (kaegroSoil) {
+    const formatKey = (key) => key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
     Object.entries(kaegroSoil).forEach(([key, value]) => {
-       // Format key: camelCase/snake_case to Title Case
-       const formattedKey = key
-          .replace(/([A-Z])/g, ' $1') // insert space before capital letters
-          .replace(/_/g, ' ') // replace underscores with spaces
-          .replace(/^\w/, c => c.toUpperCase()); // capitalize first letter
+       if (key === '_meta') return; // Skip meta data
 
-       const displayValue = typeof value === 'object' && value !== null 
-          ? JSON.stringify(value) // Keep nested objects as string if any
-          : String(value);
-
-       doc.text(`${formattedKey}: ${displayValue}`, margin, y);
+       // Section Header
+       doc.setFont(undefined, 'bold');
+       doc.text(`${formatKey(key)}:`, margin, y);
+       doc.setFont(undefined, 'normal');
        y += 6;
+
+       if (typeof value === 'object' && value !== null) {
+           // Indented list for nested properties
+           Object.entries(value).forEach(([subKey, subValue]) => {
+               // Check if page break is needed
+               if (y > 270) { doc.addPage(); y = 20; }
+               
+               doc.text(`• ${formatKey(subKey)}: ${subValue}`, margin + 6, y);
+               y += 6;
+           });
+       } else {
+           doc.text(`${value}`, margin + 30, y - 6); // Inline value if not object
+       }
+       y += 2; // Spacing between sections
     });
-    y += 4; // Extra spacing after list
+    y += 4; 
   } else {
     doc.text("Data not available or API error.", margin, y);
     y += 10;

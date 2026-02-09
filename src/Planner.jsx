@@ -1,4 +1,4 @@
-import { useState } from "react"; 
+import React, { useState } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck } from "lucide-react";
 

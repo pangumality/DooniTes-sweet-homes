@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react"; 
 
 function SoilData({ lat, lon }) { 
   const [soil, setSoil] = useState(null); 
@@ -22,8 +22,13 @@ function SoilData({ lat, lon }) {
         `/api/kaegro/farms/api/soil?lat=${lat}&lon=${lon}` 
       ); 
 
-      if (!response.ok) { 
-        throw new Error("Failed to fetch soil data"); 
+      const contentType = response.headers.get("content-type");
+      if (!response.ok || !contentType || !contentType.includes("application/json")) {
+        console.warn("Kaegro API returned non-JSON:", response.status, response.statusText, "Content-Type:", contentType);
+        if (contentType && contentType.includes("text/html")) {
+             throw new Error("Received HTML. Restart server to fix proxy.");
+        }
+        throw new Error("Failed to fetch soil data (Invalid Response)"); 
       } 
 
       const data = await response.json(); 

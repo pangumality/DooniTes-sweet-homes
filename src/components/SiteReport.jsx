@@ -36,27 +36,6 @@ export default function SiteReport({ site, soil, kaegroSoil, zone, cost, earthqu
           </div>
         </div>
 
-        {/* Kaegro Soil Data */}
-        {kaegroSoil && (
-          <div className="site-report__block">
-            <h4 className="site-report__heading" style={{ color: '#a5f3fc' }}>🌱 Live Soil Analysis (Kaegro API)</h4>
-            <div style={{ background: '#1e293b', padding: '10px', borderRadius: '4px', color: '#a5f3fc', fontSize: '0.8rem' }}>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {Object.entries(kaegroSoil).map(([key, value]) => (
-                    <li key={key} style={{ marginBottom: '5px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '2px' }}>
-                      <span style={{ color: '#fff', fontWeight: '500' }}>
-                        {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())}:
-                      </span>{' '}
-                      <span style={{ color: '#cbd5e1' }}>
-                        {typeof value === 'object' ? JSON.stringify(value) : value}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-            </div>
-          </div>
-        )}
-
         <div className="site-report__block">
           <h4 className="site-report__heading">Compliance (Seismic)</h4>
           <div className="site-report__zone">Zone: <strong>{zone}</strong> (India Std)</div>

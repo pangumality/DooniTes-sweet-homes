@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; 
+import React, { useEffect, useState } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck, MessageCircle, ArrowRight } from "lucide-react";
 
@@ -269,37 +269,46 @@ const GalleryPage = () => (
   </PageShell>
 );
 
-const AuthPage = ({ title, subtitle, actionLabel }) => (
-  <PageShell
-    title={title}
-    subtitle={subtitle}
-    image="https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80"
-  >
-    <section className="landing-section">
-      <div className="auth-card">
-        <h3>{title}</h3>
-        <p>{subtitle}</p>
-        <form className="auth-form">
-          <label>
-            Email address
-            <input className="input-field" type="email" placeholder="you@studio.com" />
-          </label>
-          <label>
-            Password
-            <input className="input-field" type="password" placeholder="••••••••" />
-          </label>
-          {actionLabel === "Create account" && (
+const AuthPage = ({ title, subtitle, actionLabel }) => {
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // In a real app, validate credentials here.
+    // For now, simply redirect to the planner.
+    window.location.hash = "#planner";
+  };
+
+  return (
+    <PageShell
+      title={title}
+      subtitle={subtitle}
+      image="https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80"
+    >
+      <section className="landing-section">
+        <div className="auth-card">
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+          <form className="auth-form" onSubmit={handleLogin}>
             <label>
-              Organization name
-              <input className="input-field" type="text" placeholder="Studio name" />
+              Email address
+              <input className="input-field" type="email" placeholder="you@studio.com" required />
             </label>
-          )}
-          <button className="btn-primary" type="button">{actionLabel}</button>
-        </form>
-      </div>
-    </section>
-  </PageShell>
-);
+            <label>
+              Password
+              <input className="input-field" type="password" placeholder="••••••••" required />
+            </label>
+            {actionLabel === "Create account" && (
+              <label>
+                Organization name
+                <input className="input-field" type="text" placeholder="Studio name" />
+              </label>
+            )}
+            <button className="btn-primary" type="submit">{actionLabel}</button>
+          </form>
+        </div>
+      </section>
+    </PageShell>
+  );
+};
 
 const SiteHeader = ({ activeRoute }) => (
   <header className="landing-header">
@@ -400,7 +409,9 @@ function PlannerApp() {
       depth: 60,
       floors: 2,
       facing: "South",
-      bedrooms: 2,
+      masterBedrooms: 1,
+      kidsBedrooms: 2,
+      guestRooms: 1,
       kitchens: 1,
       bathrooms: 2,
       bathroomSize: "Standard",
@@ -422,6 +433,8 @@ function PlannerApp() {
   const [reportData, setReportData] = useState(null);
   const [floor, setFloor] = useState(0); 
   const [viewMode, setViewMode] = useState('floorplan'); // 'floorplan' | 'exterior'
+  const [animationMode, setAnimationMode] = useState('none'); // 'none' | 'orbit' | 'walkthrough'
+  const [lastUpdated, setLastUpdated] = useState(Date.now());
 
   const updateField = (field, value) => {
       setFormData(prev => ({ ...prev, [field]: value }));
@@ -434,6 +447,15 @@ function PlannerApp() {
       }));
   };
 
+  const handleRoomUpdate = (index, newProps) => {
+    setData(prev => {
+        const newRooms = [...prev.rooms];
+        newRooms[index] = { ...newRooms[index], ...newProps };
+        return { ...prev, rooms: newRooms };
+    });
+    setLastUpdated(Date.now());
+  };
+
   const handleGenerate = async () => {
       setLoading(true);
       
@@ -444,8 +466,14 @@ function PlannerApp() {
       if (siteLocation) {
         try {
             const res = await fetch(`/api/kaegro/farms/api/soil?lat=${siteLocation.lat}&lon=${siteLocation.lng}`);
-            if(res.ok) {
+            const contentType = res.headers.get("content-type");
+            if(res.ok && contentType && contentType.includes("application/json")) {
                 kaegroSoil = await res.json();
+            } else {
+                console.warn("Kaegro API Response Warning:", res.status, res.statusText, "Content-Type:", contentType);
+                if (contentType && contentType.includes("text/html")) {
+                    console.error("Received HTML instead of JSON. Please restart the dev server (npm run dev) to apply proxy settings.");
+                }
             }
         } catch(err) {
             console.error("Kaegro API Error:", err);
@@ -796,19 +824,20 @@ function PlannerApp() {
                             <div>Size Selection</div>
                         </div>
 
+                        {/* Master Bedrooms */}
                         <div className="room-row">
                             <div className="room-type room-cell" data-label="Room Type">
-                                <div className="room-type__name">Bedrooms</div>
-                                <div className="room-type__hint">Per floor</div>
+                                <div className="room-type__name">Master Bedrooms</div>
+                                <div className="room-type__hint">With attached bath</div>
                             </div>
                             <div className="room-cell" data-label="Quantity">
                                 <div className="stepper">
                                     <button
                                         type="button"
                                         className="stepper__btn"
-                                        onClick={() => updateField('bedrooms', clampNumber(formData.bedrooms - 1, 1, 5))}
-                                        disabled={formData.bedrooms <= 1}
-                                        aria-label="Decrease bedrooms"
+                                        onClick={() => updateField('masterBedrooms', clampNumber(formData.masterBedrooms - 1, 1, 3))}
+                                        disabled={formData.masterBedrooms <= 1}
+                                        aria-label="Decrease master bedrooms"
                                     >
                                         −
                                     </button>
@@ -816,17 +845,17 @@ function PlannerApp() {
                                         className="input-field stepper__input"
                                         type="number"
                                         min="1"
-                                        max="5"
-                                        value={formData.bedrooms}
-                                        onChange={e => updateField('bedrooms', clampNumber(Number(e.target.value), 1, 5))}
-                                        aria-label="Bedrooms"
+                                        max="3"
+                                        value={formData.masterBedrooms}
+                                        onChange={e => updateField('masterBedrooms', clampNumber(Number(e.target.value), 1, 3))}
+                                        aria-label="Master Bedrooms"
                                     />
                                     <button
                                         type="button"
                                         className="stepper__btn"
-                                        onClick={() => updateField('bedrooms', clampNumber(formData.bedrooms + 1, 1, 5))}
-                                        disabled={formData.bedrooms >= 5}
-                                        aria-label="Increase bedrooms"
+                                        onClick={() => updateField('masterBedrooms', clampNumber(formData.masterBedrooms + 1, 1, 3))}
+                                        disabled={formData.masterBedrooms >= 3}
+                                        aria-label="Increase master bedrooms"
                                     >
                                         +
                                     </button>
@@ -846,6 +875,90 @@ function PlannerApp() {
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Kids Bedrooms */}
+                        <div className="room-row">
+                            <div className="room-type room-cell" data-label="Room Type">
+                                <div className="room-type__name">Kids Bedrooms</div>
+                                <div className="room-type__hint">Per floor</div>
+                            </div>
+                            <div className="room-cell" data-label="Quantity">
+                                <div className="stepper">
+                                    <button
+                                        type="button"
+                                        className="stepper__btn"
+                                        onClick={() => updateField('kidsBedrooms', clampNumber(formData.kidsBedrooms - 1, 0, 4))}
+                                        disabled={formData.kidsBedrooms <= 0}
+                                        aria-label="Decrease kids bedrooms"
+                                    >
+                                        −
+                                    </button>
+                                    <input
+                                        className="input-field stepper__input"
+                                        type="number"
+                                        min="0"
+                                        max="4"
+                                        value={formData.kidsBedrooms}
+                                        onChange={e => updateField('kidsBedrooms', clampNumber(Number(e.target.value), 0, 4))}
+                                        aria-label="Kids Bedrooms"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="stepper__btn"
+                                        onClick={() => updateField('kidsBedrooms', clampNumber(formData.kidsBedrooms + 1, 0, 4))}
+                                        disabled={formData.kidsBedrooms >= 4}
+                                        aria-label="Increase kids bedrooms"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="room-cell" data-label="Size Selection">
+                                <span className="text-light text-sm">Standard</span>
+                            </div>
+                        </div>
+
+                        {/* Guest Rooms */}
+                        <div className="room-row">
+                            <div className="room-type room-cell" data-label="Room Type">
+                                <div className="room-type__name">Guest Rooms</div>
+                                <div className="room-type__hint">Per floor</div>
+                            </div>
+                            <div className="room-cell" data-label="Quantity">
+                                <div className="stepper">
+                                    <button
+                                        type="button"
+                                        className="stepper__btn"
+                                        onClick={() => updateField('guestRooms', clampNumber(formData.guestRooms - 1, 0, 3))}
+                                        disabled={formData.guestRooms <= 0}
+                                        aria-label="Decrease guest rooms"
+                                    >
+                                        −
+                                    </button>
+                                    <input
+                                        className="input-field stepper__input"
+                                        type="number"
+                                        min="0"
+                                        max="3"
+                                        value={formData.guestRooms}
+                                        onChange={e => updateField('guestRooms', clampNumber(Number(e.target.value), 0, 3))}
+                                        aria-label="Guest Rooms"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="stepper__btn"
+                                        onClick={() => updateField('guestRooms', clampNumber(formData.guestRooms + 1, 0, 3))}
+                                        disabled={formData.guestRooms >= 3}
+                                        aria-label="Increase guest rooms"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="room-cell" data-label="Size Selection">
+                                <span className="text-light text-sm">Standard</span>
                             </div>
                         </div>
 
@@ -1248,7 +1361,7 @@ function PlannerApp() {
                                     <h3 className="section-card__title">Export & Share</h3>
                                 </div>
                                 <div className="section-card__body">
-                                    <ExportPanel data={data} floor={floor} reportData={reportData} />
+                                    <ExportPanel data={data} floor={floor} reportData={reportData} setAnimationMode={setAnimationMode} />
                                 </div>
                             </div>
 
@@ -1285,6 +1398,7 @@ function PlannerApp() {
                             </div>
                             <div className="dashboard-card__media">
                             <FloorPlan3D 
+                                key={lastUpdated}
                                 rooms={data.rooms} 
                                 stairs={data.stairs} 
                                 extras={data.extras} 
@@ -1292,6 +1406,7 @@ function PlannerApp() {
                                 plotWidth={data.width} 
                                 plotDepth={data.depth}
                                 viewMode={viewMode}
+                                animationMode={animationMode}
                             /> 
                             </div>
                         </div>
@@ -1311,6 +1426,7 @@ function PlannerApp() {
                                     floor={floor} 
                                     plotWidth={data.width} 
                                     plotDepth={data.depth} 
+                                    onUpdateRoom={handleRoomUpdate}
                                 /> 
                             </div>
                         </div>
