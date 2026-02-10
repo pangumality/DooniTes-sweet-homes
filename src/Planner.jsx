@@ -1,6 +1,6 @@
-import React, { useState } from "react"; 
+import { useState } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck } from "lucide-react";
+import { ChevronRight, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck } from "lucide-react";
 
 import FloorPlan2D from "./FloorPlan2D"; 
 import FloorPlan3D from "./FloorPlan3D"; 
@@ -13,6 +13,7 @@ import SiteReport from "./components/SiteReport";
 import { analyzeSoil } from "./analysis/soil";
 import { getEarthquakeZone, earthquakeRecommendations } from "./analysis/earthquake";
 import { estimateCost } from "./estimation/cost";
+import RoomsPalette from "./components/RoomsPalette";
 
 export default function App() { 
   const [step, setStep] = useState(1);
@@ -913,16 +914,48 @@ export default function App() {
                                 <h3 className="dashboard-card__title">2D Blueprint</h3>
                                 <div className="dashboard-card__meta">Floor {floor + 1}</div>
                             </div>
-                            <div className="dashboard-card__body dashboard-card__body--center">
-                                <FloorPlan2D 
-                                    rooms={data.rooms} 
-                                    stairs={data.stairs} 
-                                    extras={data.extras} 
-                                    columns={data.columns}
-                                    floor={floor} 
-                                    plotWidth={data.width} 
-                                    plotDepth={data.depth} 
-                                /> 
+                            <div 
+                                className="dashboard-card__body"
+                                style={{ display: "flex", gap: 16, alignItems: "stretch" }}
+                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    const payloadRaw = e.dataTransfer.getData("application/json");
+                                    if (!payloadRaw) return;
+                                    let payload;
+                                    try { payload = JSON.parse(payloadRaw); } catch { return; }
+                                    const svg = document.getElementById(`floor-plan-svg-${floor}`);
+                                    if (!svg) return;
+                                    const rect = svg.getBoundingClientRect();
+                                    const scale = 10;
+                                    const padding = 20;
+                                    const x = Math.max(0, (e.clientX - rect.left - padding) / scale);
+                                    const y = Math.max(0, (e.clientY - rect.top - padding) / scale);
+                                    const w = payload.w || 10;
+                                    const h = payload.h || 10;
+                                    const type = payload.type || "room";
+                                    const newRoom = { type, x, y, w, h, floor };
+                                    setData(prev => ({ ...prev, rooms: [...prev.rooms, newRoom] }));
+                                }}
+                            >
+                                <div style={{ flex: "1 1 auto" }}>
+                                    <FloorPlan2D 
+                                        rooms={data.rooms} 
+                                        stairs={data.stairs} 
+                                        extras={data.extras} 
+                                        columns={data.columns}
+                                        floor={floor} 
+                                        plotWidth={data.width} 
+                                        plotDepth={data.depth} 
+                                        onUpdateRoom={(index, changes) => {
+                                            setData(prev => ({
+                                                ...prev,
+                                                rooms: prev.rooms.map((r, i) => i === index ? { ...r, ...changes } : r)
+                                            }));
+                                        }}
+                                    /> 
+                                </div>
+                                <RoomsPalette />
                             </div>
                         </div>
                     </section>

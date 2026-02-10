@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"; 
+import { useEffect, useRef } from "react"; 
 import * as THREE from "three"; 
 
 function addCarImage({ scene, url, position, y = 0.02, rotationY = 0, width = 4.8, height = 2.2 }) {
@@ -395,7 +395,6 @@ export default function FloorPlan3D({ rooms, stairs, extras = [], columns = [], 
         // orientation: 'H' (North/South) -> constCoord is Z. start/end are X.
         // orientation: 'V' (West/East) -> constCoord is X. start/end are Z.
         
-        const fullLength = end - start;
         const wallY = floorY + height / 2;
         
         // Sort windows by position along the wall

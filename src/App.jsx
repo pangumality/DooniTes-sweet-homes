@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck, MessageCircle, ArrowRight } from "lucide-react";
+import { ChevronRight, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck, MessageCircle, ArrowRight } from "lucide-react";
 
 import FloorPlan2D from "./FloorPlan2D"; 
 import FloorPlan3D from "./FloorPlan3D"; 
@@ -9,8 +9,8 @@ import { generateColumns } from "./structure/columns";
 
 import ExportPanel from "./ExportPanel";
 import SiteLocation from "./components/SiteLocation";
-import SoilData from "./SoilData";
 import SiteReport from "./components/SiteReport";
+import RoomsPalette from "./components/RoomsPalette";
 import { analyzeSoil } from "./analysis/soil";
 import { getEarthquakeZone, earthquakeRecommendations } from "./analysis/earthquake";
 import { estimateCost } from "./estimation/cost";
@@ -435,6 +435,7 @@ function PlannerApp() {
   const [viewMode, setViewMode] = useState('floorplan'); // 'floorplan' | 'exterior'
   const [animationMode, setAnimationMode] = useState('none'); // 'none' | 'orbit' | 'walkthrough'
   const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [fullScreen, setFullScreen] = useState(false);
 
   const updateField = (field, value) => {
       setFormData(prev => ({ ...prev, [field]: value }));
@@ -1283,8 +1284,107 @@ function PlannerApp() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="dashboard-container"
                  >
+                    {fullScreen && (
+                      <div 
+                        style={{
+                          position: "fixed",
+                          inset: 0,
+                          zIndex: 9999,
+                          background: "var(--surface)",
+                          padding: 12,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 12,
+                          minWidth: 0,
+                          minHeight: 0,
+                          height: "100vh",
+                              overflow: "auto"
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div className="dashboard-sidebar__titles">
+                            <h3 className="dashboard-sidebar__title">Workspace</h3>
+                            <p className="dashboard-sidebar__subtitle text-light">Full screen</p>
+                          </div>
+                          <button className="btn-secondary" onClick={() => setFullScreen(false)}>Exit Full Screen</button>
+                        </div>
+                        <section style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr)", gap: 12, minHeight: 0, minWidth: 0 }}>
+                          <div className="glass-panel dashboard-card dashboard-card--media" style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                            <div className="dashboard-card__header">
+                              <h3 className="dashboard-card__title">3D Walkthrough & Model</h3>
+                            </div>
+                            <div className="dashboard-card__media" style={{ flex: 1, minHeight: 0, height: "100%" }}>
+                              <FloorPlan3D 
+                                key={lastUpdated}
+                                rooms={data.rooms} 
+                                stairs={data.stairs} 
+                                extras={data.extras} 
+                                columns={data.columns}
+                                plotWidth={data.width} 
+                                plotDepth={data.depth}
+                                viewMode={viewMode}
+                                animationMode={animationMode}
+                              /> 
+                            </div>
+                          </div>
+                          <div className="glass-panel dashboard-card" style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                            <div className="dashboard-card__header">
+                              <h3 className="dashboard-card__title">2D Blueprint</h3>
+                              <div className="dashboard-card__meta">Floor {floor + 1}</div>
+                            </div>
+                            <div 
+                              className="dashboard-card__body"
+                              style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 200px", gap: 12, alignItems: "stretch", minHeight: 0, minWidth: 0 }}
+                              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                              onDrop={(e) => {
+                                  e.preventDefault();
+                                  const payloadRaw = e.dataTransfer.getData("application/json");
+                                  if (!payloadRaw) return;
+                                  let payload;
+                                  try { payload = JSON.parse(payloadRaw); } catch { return; }
+                                  const svg = document.getElementById(`floor-plan-svg-${floor}`);
+                                  if (!svg) return;
+                                  const rect = svg.getBoundingClientRect();
+                                  const scale = 10;
+                                  const padding = 20;
+                                  const x = Math.max(0, (e.clientX - rect.left - padding) / scale);
+                                  const y = Math.max(0, (e.clientY - rect.top - padding) / scale);
+                                  const w = payload.w || 10;
+                                  const h = payload.h || 10;
+                                  const type = payload.type || "room";
+                                  const newRoom = { type, x, y, w, h, floor, doors: [], windows: [] };
+                                  setData(prev => ({ ...prev, rooms: [...prev.rooms, newRoom] }));
+                              }}
+                            >
+                              <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "auto" }}>
+                                <FloorPlan2D 
+                                    rooms={data.rooms} 
+                                    stairs={data.stairs} 
+                                    extras={data.extras} 
+                                    columns={data.columns}
+                                    floor={floor} 
+                                    plotWidth={data.width} 
+                                    plotDepth={data.depth} 
+                                    onUpdateRoom={handleRoomUpdate}
+                                    onDeleteRoom={(index) => {
+                                        setData(prev => ({
+                                            ...prev,
+                                            rooms: prev.rooms.filter((_, i) => i !== index)
+                                        }));
+                                    }}
+                                    fitToContainer={true}
+                                /> 
+                              </div>
+                              <div style={{ width: 200, height: "100%", overflow: "auto" }}>
+                                <RoomsPalette />
+                              </div>
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+                    )}
                     {/* Sidebar */}
-                    <aside className="glass-panel dashboard-sidebar">
+                    <aside className="glass-panel dashboard-sidebar" style={{ display: fullScreen ? "none" : undefined }}>
                         <div className="dashboard-sidebar__header">
                             <div className="dashboard-sidebar__icon" aria-hidden="true">
                                 <LayoutDashboard size={18} />
@@ -1377,6 +1477,7 @@ function PlannerApp() {
                         <div className="glass-panel dashboard-card dashboard-card--media">
                             <div className="dashboard-card__header">
                                 <h3 className="dashboard-card__title">3D Walkthrough & Model</h3>
+                                <button className="btn-secondary" onClick={() => setFullScreen(true)}>Full Screen</button>
                                 <div className="segmented dashboard-toggle" role="group" aria-label="3D view mode">
                                     <button
                                         type="button"
@@ -1416,18 +1517,53 @@ function PlannerApp() {
                             <div className="dashboard-card__header">
                                 <h3 className="dashboard-card__title">2D Blueprint</h3>
                                 <div className="dashboard-card__meta">Floor {floor + 1}</div>
+                                <button className="btn-secondary" onClick={() => setFullScreen(true)} style={{ marginLeft: "auto" }}>Full Screen</button>
                             </div>
-                            <div className="dashboard-card__body dashboard-card__body--center">
-                                <FloorPlan2D 
-                                    rooms={data.rooms} 
-                                    stairs={data.stairs} 
-                                    extras={data.extras} 
-                                    columns={data.columns}
-                                    floor={floor} 
-                                    plotWidth={data.width} 
-                                    plotDepth={data.depth} 
-                                    onUpdateRoom={handleRoomUpdate}
-                                /> 
+                            <div 
+                                className="dashboard-card__body"
+                                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 160px", gap: 10, alignItems: "stretch" }}
+                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    const payloadRaw = e.dataTransfer.getData("application/json");
+                                    if (!payloadRaw) return;
+                                    let payload;
+                                    try { payload = JSON.parse(payloadRaw); } catch { return; }
+                                    const svg = document.getElementById(`floor-plan-svg-${floor}`);
+                                    if (!svg) return;
+                                    const rect = svg.getBoundingClientRect();
+                                    const scale = 10;
+                                    const padding = 20;
+                                    const x = Math.max(0, (e.clientX - rect.left - padding) / scale);
+                                    const y = Math.max(0, (e.clientY - rect.top - padding) / scale);
+                                    const w = payload.w || 10;
+                                    const h = payload.h || 10;
+                                    const type = payload.type || "room";
+                                    const newRoom = { type, x, y, w, h, floor, doors: [], windows: [] };
+                                    setData(prev => ({ ...prev, rooms: [...prev.rooms, newRoom] }));
+                                }}
+                            >
+                                <div style={{ minWidth: 0 }}>
+                                    <FloorPlan2D 
+                                        rooms={data.rooms} 
+                                        stairs={data.stairs} 
+                                        extras={data.extras} 
+                                        columns={data.columns}
+                                        floor={floor} 
+                                        plotWidth={data.width} 
+                                        plotDepth={data.depth} 
+                                        onUpdateRoom={handleRoomUpdate}
+                                        onDeleteRoom={(index) => {
+                                            setData(prev => ({
+                                                ...prev,
+                                                rooms: prev.rooms.filter((_, i) => i !== index)
+                                            }));
+                                        }}
+                                    /> 
+                                </div>
+                                <div style={{ width: 160 }}>
+                                    <RoomsPalette />
+                                </div>
                             </div>
                         </div>
                     </section>

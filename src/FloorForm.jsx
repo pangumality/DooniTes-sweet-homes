@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function FloorForm({ onSubmit }) { 
   const handleSubmit = e => { 

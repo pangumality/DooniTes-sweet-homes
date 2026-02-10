@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { analyzeRoom } from "./analysis/environment";
+import { useState, useEffect } from "react";
 
-export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], floor, plotWidth, plotDepth, onUpdateRoom }) { 
+export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], floor, plotWidth, plotDepth, onUpdateRoom, onDeleteRoom, fitToContainer = false }) { 
   const scale = 10; 
   const [dragState, setDragState] = useState(null);
 
@@ -160,7 +159,6 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
     let path = "";
     let labelX = cx;
     let labelY = cy;
-    let rotation = 0;
 
     if (isTop) {
         // Hinge left, swing in-down
@@ -230,7 +228,14 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
   const svgHeight = maxY * scale + padding * 2;
 
   return ( 
-    <svg id={`floor-plan-svg-${floor}`} width={svgWidth} height={svgHeight} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "16px" }}> 
+    <svg 
+      id={`floor-plan-svg-${floor}`} 
+      viewBox={`0 0 ${svgWidth} ${svgHeight}`} 
+      width="100%" 
+      height={fitToContainer ? "100%" : svgHeight} 
+      preserveAspectRatio="xMidYMid meet"
+      style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "16px" }}
+    > 
       <defs>
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
               <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--border)" strokeWidth="1"/>
@@ -385,6 +390,20 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                 </text>
             </g>
 
+            {/* Delete Control */}
+            {onDeleteRoom && (
+              <g 
+                transform={`translate(${(rX + rW) * scale - 14}, ${rY * scale + 6})`} 
+                onMouseDown={(e) => { e.stopPropagation(); }} 
+                onClick={(e) => { e.stopPropagation(); onDeleteRoom(originalIndex); }}
+                style={{ cursor: 'pointer' }}
+              >
+                <rect x="0" y="0" width="12" height="12" rx="3" fill="var(--surface)" stroke="var(--border)" />
+                <line x1="3" y1="3" x2="9" y2="9" stroke="var(--danger)" strokeWidth="1.5" />
+                <line x1="9" y1="3" x2="3" y2="9" stroke="var(--danger)" strokeWidth="1.5" />
+              </g>
+            )}
+
             {/* Resize Handles */}
             {onUpdateRoom && (
                 <g>
@@ -404,7 +423,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
 
             {/* Doors */}
             <g transform={`translate(${(rX - room.x) * scale}, ${(rY - room.y) * scale})`}>
-                {room.doors && room.doors.map((d, j) => renderDoor(d, room))}
+                {room.doors && room.doors.map((d) => renderDoor(d, room))}
             </g>
           </g> 
           ); 

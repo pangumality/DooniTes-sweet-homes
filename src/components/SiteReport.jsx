@@ -1,6 +1,5 @@
-import React from 'react';
 
-export default function SiteReport({ site, soil, kaegroSoil, zone, cost, earthquakeRecs }) { 
+export default function SiteReport({ site, soil, zone, cost, earthquakeRecs }) { 
   if (!site || !soil || !zone || !cost) return null;
 
   const riskTone = soil.riskLevel === 'High' ? 'danger' : soil.riskLevel === 'Low' ? 'success' : 'warning';

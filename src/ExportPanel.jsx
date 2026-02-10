@@ -1,4 +1,3 @@
-import React from 'react';
 import { exportDXF } from "./export/dxfExporter";
 import { exportSoilReportPDF } from "./export/pdfExporter";
 import { Download, Video, FileCode, Image, FileText } from "lucide-react";
