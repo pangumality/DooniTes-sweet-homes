@@ -5,7 +5,7 @@ import { ChevronRight, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefc
 import FloorPlan3D from "./FloorPlan3D"; 
 import FloorPlan2D from "./FloorPlan2D"; 
 import AIRender from "./AIRender";
-import { generatePlan, generatePlanVariants } from "./generatePlan"; 
+import { generatePlanVariants } from "./generatePlan"; 
 import { generateColumns } from "./structure/columns"; 
 
 import ExportPanel from "./ExportPanel";
@@ -17,6 +17,7 @@ import { getEarthquakeZone, earthquakeRecommendations } from "./analysis/earthqu
 import { estimateCost } from "./estimation/cost";
 import { generateHouseImage, analyzeImageAndGeneratePrompt } from "./services/openai";
 import html2canvas from "html2canvas";
+import "./styles/layout.css";
 
 const NAV_ITEMS = [
   { id: "home", label: "Home" },
@@ -50,6 +51,30 @@ const FEATURES = [
   { title: "Export Anywhere", copy: "Deliver DXF, PDF, and presentation-ready assets." }
 ];
 
+const useMediaQuery = (query) => {
+  const getMatches = () => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  };
+
+  const [matches, setMatches] = useState(getMatches);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const handleChange = () => setMatches(media.matches);
+    handleChange();
+
+    if (media.addEventListener) {
+      media.addEventListener("change", handleChange);
+      return () => media.removeEventListener("change", handleChange);
+    }
+
+    media.addListener(handleChange);
+    return () => media.removeListener(handleChange);
+  }, [query]);
+
+  return matches;
+};
 
 const getRoute = () => {
   const hash = window.location.hash.replace("#", "").trim();
@@ -451,6 +476,9 @@ function PlannerApp() {
   const [roomsPanelOpen, setRoomsPanelOpen] = useState(true);
   const [dataVariants, setDataVariants] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(0);
+  const isWide = useMediaQuery("(min-width: 1200px)");
+  const isMedium = useMediaQuery("(min-width: 768px)");
+  const gridClass = isWide ? "grid-12" : isMedium ? "grid-8" : "grid-4";
 
   const updateField = (field, value) => {
       setFormData(prev => ({ ...prev, [field]: value }));
@@ -761,7 +789,7 @@ function PlannerApp() {
         </div>
       </header>
 
-      <main style={{padding: '40px 20px', maxWidth: '1200px', margin: '0 auto'}}>
+      <main className={`app-main ${step === 6 ? "fullWidth" : ""}`}>
         <AnimatePresence mode="wait">
             
             {/* Step 1: Location */}
@@ -1441,33 +1469,29 @@ function PlannerApp() {
                     key="step6"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className={`dashboard-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
+                    className={`dashboard-container fullWidth layoutGrid ${gridClass} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
                  >
+                    {!fullScreen && (
+                      <div className="dashboard-topbar section">
+                        <div>
+                          <h2 className="sectionTitle">Project Workspace</h2>
+                          <p className="sectionSubtitle text-light">Review, refine, and export your plan.</p>
+                        </div>
+                        <div className="topbarActions">
+                          <button className="btn-primary" onClick={() => setFullScreen(true)}>Full Screen</button>
+                          <a className="btn-secondary" href="#export-panel">Export</a>
+                          <button className="btn-secondary" onClick={() => setStep(1)}>Start New Project</button>
+                        </div>
+                      </div>
+                    )}
                     {fullScreen && (
-                      <div 
-                        style={{
-                          position: "fixed",
-                          inset: 0,
-                          zIndex: 9999,
-                          background: "var(--surface)",
-                          padding: 12,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 12,
-                          minWidth: 0,
-                          minHeight: 0,
-                          height: "100vh",
-                              overflow: "auto"
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div className="dashboard-sidebar__titles">
-                            <h3 className="dashboard-sidebar__title">Workspace</h3>
-                            <p className="dashboard-sidebar__subtitle text-light">Full screen</p>
+                      <div className="fullScreenOverlay fullWidth">
+                        <div className="fullScreenHeader section">
+                          <div>
+                            <h2 className="sectionTitle">Workspace</h2>
+                            <p className="sectionSubtitle text-light">Full screen</p>
                           </div>
-                          
-                          {/* Main Mode Toggle for Full Screen */}
-                          <div className="segmented dashboard-toggle" role="group" aria-label="Dashboard mode">
+                          <div className="segmented dashboard-toggle segmented--singleRow" role="group" aria-label="Dashboard mode">
                                 <button
                                     type="button"
                                     className="segmented__btn"
@@ -1490,8 +1514,8 @@ function PlannerApp() {
                         </div>
 
                         {dashboardMode === 'ai' ? (
-                            <div className="glass-panel dashboard-card dashboard-card--media" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                                <div className="dashboard-card__media" style={{ flex: 1, minHeight: 0 }}>
+                            <div className="glass-panel dashboard-card dashboard-card--media card fullScreenCard">
+                                <div className="dashboard-card__media fullScreenMedia">
                                     <AIRender 
                                         aiMode={aiMode}
                                         setAiMode={setAiMode}
@@ -1500,18 +1524,17 @@ function PlannerApp() {
                                         aiError={aiError}
                                         onGenerate={handleGenerateAI}
                                     />
-                                    {/* Debug Image Display */}
                                     {debugImage && aiMode === 'interior' && (
-                                        <div style={{ marginTop: 20, padding: 20, borderTop: '1px solid var(--border)' }}>
-                                            <h4 style={{ marginBottom: 10, color: 'var(--text-light)' }}>Debug: Input Image for Vision Model</h4>
-                                            <div style={{ border: '2px dashed var(--primary)', borderRadius: 8, overflow: 'hidden', display: 'inline-block' }}>
+                                        <div className="debugPanel section">
+                                            <h3 className="debugTitle">Debug: Input Image for Vision Model</h3>
+                                            <div className="debugFrame">
                                                 <img 
                                                     src={debugImage} 
                                                     alt="Debug Capture" 
-                                                    style={{ maxWidth: '300px', height: 'auto', display: 'block' }} 
+                                                    className="debugImage"
                                                 />
                                             </div>
-                                            <p style={{ fontSize: '0.8em', color: 'var(--text-light)', marginTop: 5 }}>
+                                            <p className="debugCopy">
                                                 This exact snapshot is sent to GPT-4o to analyze the layout.
                                             </p>
                                         </div>
@@ -1519,15 +1542,18 @@ function PlannerApp() {
                                 </div>
                             </div>
                         ) : (
-                            <section style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr)", gap: 12, minHeight: 0, minWidth: 0 }}>
-                            <div className="glass-panel dashboard-card dashboard-card--media" style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-                                <div className="dashboard-card__header">
-                                <h3 className="dashboard-card__title">3D Walkthrough & Model</h3>
-                                <div className="segmented dashboard-toggle" role="group" aria-label="3D view mode">
+                            <section className={`fullScreenGrid ${isWide ? "split" : "stack"}`}>
+                            <div className="glass-panel dashboard-card dashboard-card--media card fullScreenCard">
+                                <div className="dashboard-card__header viewHeader">
+                                <div className="viewHeader__left">
+                                  <h3 className="dashboard-card__title">3D Walkthrough & Model</h3>
+                                  <span className="viewBadge">{viewMode === 'exterior' ? 'Exterior' : 'Interior'}</span>
+                                </div>
+                                <div className="segmented dashboard-toggle segmented--singleRow" role="group" aria-label="3D view mode">
                                     <button
                                         type="button"
                                         className="segmented__btn"
-                                        aria-pressed={viewMode === 'floorplan' || viewMode === '2d'} // Default to interior if 2d was selected
+                                        aria-pressed={viewMode === 'floorplan' || viewMode === '2d'}
                                         onClick={() => setViewMode('floorplan')}
                                     >
                                         Interior
@@ -1542,23 +1568,25 @@ function PlannerApp() {
                                     </button>
                                 </div>
                                 </div>
-                                <div className="dashboard-card__media" style={{ flex: 1, minHeight: 0, height: "100%" }}>
-                                    <FloorPlan3D 
-                                        key={lastUpdated}
-                                        rooms={data.rooms} 
-                                        stairs={data.stairs} 
-                                        extras={data.extras} 
-                                        columns={data.columns}
-                                        plotWidth={data.width} 
-                                        plotDepth={data.depth}
-                                        viewMode={(viewMode === '2d' || viewMode === 'floorplan') ? 'floorplan' : 'exterior'}
-                                        animationMode={animationMode}
-                                    /> 
+                                <div className="dashboard-card__media fullScreenMedia viewFrame">
+                                    <div className="viewFrame__content">
+                                      <FloorPlan3D 
+                                          key={lastUpdated}
+                                          rooms={data.rooms} 
+                                          stairs={data.stairs} 
+                                          extras={data.extras} 
+                                          columns={data.columns}
+                                          plotWidth={data.width} 
+                                          plotDepth={data.depth}
+                                          viewMode={(viewMode === '2d' || viewMode === 'floorplan') ? 'floorplan' : 'exterior'}
+                                          animationMode={animationMode}
+                                      /> 
+                                    </div>
                                 </div>
                             </div>
-                            <div className="glass-panel dashboard-card" style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-                                <div className="dashboard-card__header" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <h3 className="dashboard-card__title" style={{ flex: 1 }}>2D Blueprint</h3>
+                            <div className="glass-panel dashboard-card card fullScreenCard">
+                                <div className="dashboard-card__header cardHeader">
+                                  <h3 className="dashboard-card__title cardHeaderTitle">2D Blueprint</h3>
                                   <div className="dashboard-card__meta">Floor {floor + 1}</div>
                                   {dataVariants && (
                                     <div className="segmented" role="group" aria-label="2D plan variant">
@@ -1585,8 +1613,7 @@ function PlannerApp() {
                                   </button>
                                 </div>
                                 <div 
-                                className="dashboard-card__body"
-                                style={{ display: "grid", gridTemplateColumns: roomsPanelOpen ? "minmax(0, 1fr) 200px" : "minmax(0, 1fr)", gap: 12, alignItems: "stretch", minHeight: 0, minWidth: 0 }}
+                                className={`dashboard-card__body planGrid ${roomsPanelOpen ? "planGrid--withPaletteWide" : ""}`}
                                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
                                 onDrop={(e) => {
                                     e.preventDefault();
@@ -1617,7 +1644,7 @@ function PlannerApp() {
                                     }
                                 }}
                                 >
-                                <div style={{ minWidth: 0, minHeight: 0, height: "100%", overflow: "auto" }}>
+                                <div className="planScroll">
                                         <FloorPlan2D 
                                         rooms={(dataVariants ? dataVariants[selectedVariant].rooms : data.rooms)} 
                                         stairs={(dataVariants ? dataVariants[selectedVariant].stairs : data.stairs)} 
@@ -1649,7 +1676,7 @@ function PlannerApp() {
                                     /> 
                                 </div>
                                 {roomsPanelOpen && (
-                                  <div style={{ width: 200, height: "100%", overflow: "auto" }}>
+                                  <div className="palettePane palettePane--wide">
                                       <RoomsPalette collapsed={!roomsPanelOpen} onToggle={() => setRoomsPanelOpen(o => !o)} />
                                   </div>
                                 )}
@@ -1659,8 +1686,7 @@ function PlannerApp() {
                         )}
                       </div>
                     )}
-                    {/* Sidebar */}
-                    <aside className={`glass-panel dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`} style={{ display: fullScreen ? "none" : undefined }}>
+                    <aside className={`glass-panel dashboard-sidebar card section layoutSidebar ${sidebarCollapsed ? 'collapsed' : ''} ${fullScreen ? 'is-hidden' : ''}`}>
                         <div className="dashboard-sidebar__header">
                             <div className="dashboard-sidebar__icon" aria-hidden="true">
                                 <LayoutDashboard size={18} />
@@ -1670,17 +1696,16 @@ function PlannerApp() {
                                 <p className="dashboard-sidebar__subtitle text-light">Generated plan workspace</p>
                             </div>
                             <button 
-                                className="btn-icon" 
+                                className="btn-icon iconButton" 
                                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                                 title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, borderRadius: 4 }}
                             >
                                 {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
                             </button>
                         </div>
 
                         <div className="dashboard-sidebar__stack">
-                            <div className="section-card">
+                            <div className="section-card card">
                                 <div className="section-card__header">
                                     <h3 className="section-card__title">Project Summary</h3>
                                 </div>
@@ -1710,7 +1735,7 @@ function PlannerApp() {
                                 </div>
                             </div>
 
-                            <div className="section-card">
+                            <div className="section-card card">
                                 <div className="section-card__header">
                                     <h3 className="section-card__title">View Floor</h3>
                                 </div>
@@ -1730,7 +1755,7 @@ function PlannerApp() {
                             </div>
 
                             {reportData && (
-                                <div className="section-card">
+                                <div className="section-card card">
                                     <div className="section-card__header">
                                         <h3 className="section-card__title">Site Analysis & Costing</h3>
                                     </div>
@@ -1740,7 +1765,7 @@ function PlannerApp() {
                                 </div>
                             )}
 
-                            <div className="section-card">
+                            <div className="section-card card" id="export-panel">
                                 <div className="section-card__header">
                                     <h3 className="section-card__title">Export & Share</h3>
                                 </div>
@@ -1757,25 +1782,30 @@ function PlannerApp() {
                                 </div>
                             </div>
 
-                            <button className="btn-secondary dashboard-sidebar__cta" onClick={() => setStep(1)}>
-                                Start New Project
-                            </button>
                         </div>
                     </aside>
 
-                    {/* Main Content */}
-                    <section className="dashboard-main">
+                    <section className="dashboard-main layoutMain">
                         {/* 3D View / AI Render */}
-                        <div className="glass-panel dashboard-card dashboard-card--media">
-                            <div className="dashboard-card__header">
+                        <div className="glass-panel dashboard-card dashboard-card--media card">
+                            <div className="dashboard-card__header viewHeader">
+                                <div className="viewHeader__left">
                                 <h3 className="dashboard-card__title">
                                     {dashboardMode === 'ai' ? 'AI Visualization' : '3D Walkthrough & Model'}
                                 </h3>
-                                <button className="btn-secondary" onClick={() => setFullScreen(true)}>Full Screen</button>
-                                
-                                <div style={{ display: 'flex', gap: '10px' }}>
+                                <span className="viewBadge">
+                                  {dashboardMode === 'ai'
+                                    ? 'AI Render'
+                                    : viewMode === 'exterior'
+                                      ? 'Exterior'
+                                      : viewMode === '2d'
+                                        ? '2D Plan'
+                                        : 'Interior'}
+                                </span>
+                                </div>
+                                <div className="headerActions headerActions--singleRow">
                                     {/* Main Mode Toggle */}
-                                    <div className="segmented dashboard-toggle" role="group" aria-label="Dashboard mode">
+                                    <div className="segmented dashboard-toggle segmented--singleRow" role="group" aria-label="Dashboard mode">
                                         <button
                                             type="button"
                                             className="segmented__btn"
@@ -1793,65 +1823,66 @@ function PlannerApp() {
                                             AI Render
                                         </button>
                                     </div>
-
-                                    {/* Sub-toggle for Model View */}
-                                    {dashboardMode === 'model' && (
-                                        <div className="segmented dashboard-toggle" role="group" aria-label="3D view mode">
-                                            <button
-                                                type="button"
-                                                className="segmented__btn"
-                                                aria-pressed={viewMode === 'floorplan'}
-                                                onClick={() => setViewMode('floorplan')}
-                                            >
-                                                Interior
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="segmented__btn"
-                                                aria-pressed={viewMode === 'exterior'}
-                                                onClick={() => setViewMode('exterior')}
-                                            >
-                                                Exterior
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="segmented__btn"
-                                                aria-pressed={viewMode === '2d'}
-                                                onClick={() => setViewMode('2d')}
-                                            >
-                                                2D Plan
-                                            </button>
-                                        </div>
-                                    )}
-                                    
-                                    {dashboardMode === 'model' && viewMode === '2d' && (
-                                      <button 
-                                        type="button" 
-                                        className="btn-secondary" 
-                                        onClick={() => setRoomsPanelOpen(o => !o)}
-                                        title={roomsPanelOpen ? "Collapse Rooms panel" : "Expand Rooms panel"}
-                                      >
-                                        {roomsPanelOpen ? "Hide Rooms" : "Show Rooms"}
-                                      </button>
-                                    )}
-                                    {dashboardMode === 'model' && viewMode === '2d' && dataVariants && (
-                                      <div className="segmented" role="group" aria-label="2D plan variant">
-                                        {Array.from({ length: dataVariants.length }, (_, i) => i).map(i => (
-                                          <button 
-                                            key={i}
-                                            type="button" 
-                                            className="segmented__btn" 
-                                            aria-pressed={selectedVariant === i}
-                                            onClick={() => setSelectedVariant(i)}
-                                          >
-                                            Variant {i+1}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
                                 </div>
                             </div>
-                            <div className="dashboard-card__media">
+                            {dashboardMode === 'model' && (
+                              <div className="viewSubRow">
+                                <div className="segmented dashboard-toggle segmented--singleRow viewToggleRow" role="group" aria-label="3D view mode">
+                                    <button
+                                        type="button"
+                                        className="segmented__btn"
+                                        aria-pressed={viewMode === 'floorplan'}
+                                        onClick={() => setViewMode('floorplan')}
+                                    >
+                                        Interior
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="segmented__btn"
+                                        aria-pressed={viewMode === 'exterior'}
+                                        onClick={() => setViewMode('exterior')}
+                                    >
+                                        Exterior
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="segmented__btn"
+                                        aria-pressed={viewMode === '2d'}
+                                        onClick={() => setViewMode('2d')}
+                                    >
+                                        2D Plan
+                                    </button>
+                                </div>
+                                <div className="viewSubRow__actions">
+                                  {viewMode === '2d' && (
+                                    <button 
+                                      type="button" 
+                                      className="btn-secondary" 
+                                      onClick={() => setRoomsPanelOpen(o => !o)}
+                                      title={roomsPanelOpen ? "Collapse Rooms panel" : "Expand Rooms panel"}
+                                    >
+                                      {roomsPanelOpen ? "Hide Rooms" : "Show Rooms"}
+                                    </button>
+                                  )}
+                                  {viewMode === '2d' && dataVariants && (
+                                    <div className="segmented segmented--singleRow" role="group" aria-label="2D plan variant">
+                                      {Array.from({ length: dataVariants.length }, (_, i) => i).map(i => (
+                                        <button 
+                                          key={i}
+                                          type="button" 
+                                          className="segmented__btn" 
+                                          aria-pressed={selectedVariant === i}
+                                          onClick={() => setSelectedVariant(i)}
+                                        >
+                                          Variant {i+1}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            <div className={`dashboard-card__media ${dashboardMode === 'model' ? "viewFrame" : ""}`}>
                                 {dashboardMode === 'ai' ? (
                                     <AIRender 
                                         aiMode={aiMode}
@@ -1862,21 +1893,22 @@ function PlannerApp() {
                                         onGenerate={handleGenerateAI}
                                     />
                                 ) : viewMode === 'exterior' || viewMode === 'floorplan' ? (
-                                    <FloorPlan3D 
-                                        key={lastUpdated}
-                                        rooms={data.rooms} 
-                                        stairs={data.stairs} 
-                                        extras={data.extras} 
-                                        columns={data.columns}
-                                        plotWidth={data.width} 
-                                        plotDepth={data.depth}
-                                        viewMode={viewMode}
-                                        animationMode={animationMode}
-                                    /> 
+                                    <div className="viewFrame__content">
+                                      <FloorPlan3D 
+                                          key={lastUpdated}
+                                          rooms={data.rooms} 
+                                          stairs={data.stairs} 
+                                          extras={data.extras} 
+                                          columns={data.columns}
+                                          plotWidth={data.width} 
+                                          plotDepth={data.depth}
+                                          viewMode={viewMode}
+                                          animationMode={animationMode}
+                                      /> 
+                                    </div>
                                 ) : (
                                     <div 
-                                        className="dashboard-card__body"
-                                      style={{ display: "grid", gridTemplateColumns: roomsPanelOpen ? "minmax(0, 1fr) 160px" : "minmax(0, 1fr)", gap: 10, alignItems: "stretch", height: "100%", padding: 0 }}
+                                        className={`dashboard-card__body planGrid ${roomsPanelOpen ? "planGrid--withPalette" : ""}`}
                                         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
                                         onDrop={(e) => {
                                             e.preventDefault();
@@ -1907,7 +1939,7 @@ function PlannerApp() {
                                             }
                                         }}
                                     >
-                                        <div style={{ minWidth: 0, height: "100%", overflow: "hidden", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                                        <div className="planCanvas">
                                             <FloorPlan2D 
                                                 rooms={(dataVariants ? dataVariants[selectedVariant].rooms : data.rooms)} 
                                                 stairs={(dataVariants ? dataVariants[selectedVariant].stairs : data.stairs)} 
@@ -1939,7 +1971,7 @@ function PlannerApp() {
                                             /> 
                                         </div>
                                         {roomsPanelOpen && (
-                                          <div style={{ width: 160, height: "100%", overflow: "auto" }}>
+                                          <div className="palettePane">
                                               <RoomsPalette collapsed={!roomsPanelOpen} onToggle={() => setRoomsPanelOpen(o => !o)} />
                                           </div>
                                         )}

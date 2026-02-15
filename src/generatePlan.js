@@ -683,9 +683,6 @@ export function generatePlanVariants(specs) {
   const variantLuxurySymmetric = (() => {
     const {
       width, depth, floors,
-      masterBedrooms = 2, kidsBedrooms = 1, guestRooms = 0,
-      kitchens = 1,
-      bathrooms = 2,
       bathroomSize = "Standard",
       masterBedroomSize = "Standard",
       facing,

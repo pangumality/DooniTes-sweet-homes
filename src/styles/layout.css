@@ -1,0 +1,383 @@
+.fullWidth {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.app-main.fullWidth {
+  padding: 0;
+  max-width: none;
+  overflow-x: hidden;
+}
+
+.layoutGrid {
+  display: grid;
+  width: 100%;
+  margin: 0 auto;
+  padding: clamp(16px, 2vw, 32px) clamp(16px, 3vw, 48px);
+  gap: clamp(16px, 2vw, 24px);
+  align-items: start;
+  min-width: 0;
+}
+
+.layoutGrid.grid-12 {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.layoutGrid.grid-8 {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+.layoutGrid.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.layoutSidebar {
+  grid-column: span 4;
+  min-width: 0;
+}
+
+.layoutMain {
+  grid-column: span 8;
+  min-width: 0;
+}
+
+.layoutGrid.grid-8 .layoutSidebar,
+.layoutGrid.grid-8 .layoutMain,
+.layoutGrid.grid-4 .layoutSidebar,
+.layoutGrid.grid-4 .layoutMain {
+  grid-column: 1 / -1;
+}
+
+.dashboard-topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.sectionSubtitle {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+}
+
+.topbarActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card {
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.headerActions--singleRow {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.viewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.viewHeader__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.viewBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-light);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.viewSubRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.viewSubRow > * {
+  flex: 0 0 auto;
+}
+
+.viewToggleRow {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.viewToggleRow .segmented__btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .viewSubRow {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .viewToggleRow {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
+.viewSubRow__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.cardHeader {
+  align-items: center;
+  gap: 8px;
+}
+
+.cardHeaderTitle {
+  flex: 1;
+}
+
+.segmented--singleRow {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.segmented--singleRow .segmented__btn {
+  flex: 0 0 auto;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--surface-2);
+}
+
+.iconButton {
+  margin-left: auto;
+}
+
+.fullScreenOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--background);
+  padding: clamp(16px, 2vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vw, 20px);
+  min-width: 0;
+  min-height: 0;
+  height: 100vh;
+  overflow: auto;
+}
+
+.fullScreenHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fullScreenGrid {
+  flex: 1 1 auto;
+  display: grid;
+  gap: clamp(12px, 2vw, 20px);
+  min-height: 0;
+  min-width: 0;
+}
+
+.fullScreenGrid.split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+}
+
+.fullScreenGrid.stack {
+  grid-template-columns: 1fr;
+}
+
+.fullScreenCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fullScreenCard .dashboard-card__media {
+  height: auto;
+}
+
+.viewFrame {
+  position: relative;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.02));
+}
+
+.viewFrame__content {
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.fullScreenMedia {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.planGrid {
+  display: grid;
+  gap: 12px;
+  align-items: stretch;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.planGrid--withPalette {
+  grid-template-columns: minmax(0, 1fr) 160px;
+}
+
+.planGrid--withPaletteWide {
+  grid-template-columns: minmax(0, 1fr) 200px;
+}
+
+.planScroll {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+.planCanvas {
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.palettePane {
+  width: 160px;
+  height: 100%;
+  overflow: auto;
+}
+
+.palettePane--wide {
+  width: 200px;
+}
+
+.debugPanel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.debugTitle {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: var(--text-light);
+}
+
+.debugFrame {
+  border: 2px dashed var(--primary);
+  border-radius: 8px;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.debugImage {
+  max-width: 300px;
+  height: auto;
+  display: block;
+}
+
+.debugCopy {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin: 6px 0 0;
+}
+
+.layoutSidebar.is-hidden {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .dashboard-topbar,
+  .fullScreenHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .planGrid--withPalette {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .planGrid--withPaletteWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .palettePane,
+  .palettePane--wide {
+    width: 100%;
+  }
+}

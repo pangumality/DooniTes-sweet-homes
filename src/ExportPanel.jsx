@@ -36,6 +36,7 @@ const recordCanvas = (canvas, durationMs) => {
 
 export default function ExportPanel({ data, floor, reportData, setAnimationMode, generatedImages, dashboardMode, setDashboardMode }) {
   const [isZipping, setIsZipping] = useState(false);
+  const hasAiRenders = Boolean(generatedImages?.interior && generatedImages?.exterior);
   
   const handleCaptureImage = () => {
     const canvas = document.getElementById("floor-plan-3d-canvas");
@@ -114,6 +115,10 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
   };
 
   const handleDownloadZip = async () => {
+      if (!hasAiRenders) {
+          alert("Generate both Interior and Exterior AI renders before downloading the project zip.");
+          return;
+      }
       // 1. Check prerequisites & Handle Mode Switching
       let canvas3d = document.getElementById("floor-plan-3d-canvas");
       let switchedMode = false;
@@ -232,6 +237,8 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
             className="btn-primary export-panel__btn" 
             onClick={handleDownloadZip}
             disabled={isZipping}
+            aria-disabled={!hasAiRenders}
+            title={!hasAiRenders ? "Generate both Interior and Exterior AI renders to enable download." : undefined}
             style={{ marginTop: 10, justifyContent: 'center', backgroundColor: 'var(--primary)', color: 'white' }}
         >
           {isZipping ? (

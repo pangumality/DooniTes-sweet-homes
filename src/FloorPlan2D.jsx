@@ -575,30 +575,24 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
     const isBottom = Math.abs(d.y - room.h) <= 0.5;
 
     let path = "";
-    let labelX = cx;
-    let labelY = cy;
 
     if (isTop) {
         // Hinge left, swing in-down
         path = `M ${cx - r/2},${cy} A ${r},${r} 0 0 1 ${cx + r/2},${cy + r}`;
         // Draw door leaf
         path += ` L ${cx - r/2},${cy + r}`; 
-        labelY += 15;
     } else if (isBottom) {
         // Hinge left, swing in-up
         path = `M ${cx - r/2},${cy} A ${r},${r} 0 0 0 ${cx + r/2},${cy - r}`;
         path += ` L ${cx - r/2},${cy - r}`;
-        labelY -= 15;
     } else if (isLeft) {
         // Hinge top, swing in-right
         path = `M ${cx},${cy - r/2} A ${r},${r} 0 0 0 ${cx + r},${cy + r/2}`;
         path += ` L ${cx + r},${cy - r/2}`;
-        labelX += 15;
     } else if (isRight) {
         // Hinge top, swing in-left
         path = `M ${cx},${cy - r/2} A ${r},${r} 0 0 1 ${cx - r},${cy + r/2}`;
         path += ` L ${cx - r},${cy - r/2}`;
-        labelX -= 15;
     }
 
     return (

@@ -185,7 +185,7 @@ export default function App() {
         </div>
       </header>
 
-      <main style={{padding: '40px 20px', maxWidth: '1200px', margin: '0 auto'}}>
+      <main className="app-main">
         <AnimatePresence mode="wait">
             
             {/* Step 1: Location */}

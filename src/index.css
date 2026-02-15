@@ -158,6 +158,16 @@ label {
 
 .app-container {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  padding: 32px 20px;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .app-header {
@@ -1634,7 +1644,7 @@ input[type=range]:focus::-webkit-slider-runnable-track {
 }
 
 .dashboard-card__media {
-  height: 520px;
+  height: 62vh;
   background: var(--surface-2);
 }
 
@@ -1649,7 +1659,7 @@ input[type=range]:focus::-webkit-slider-runnable-track {
   }
 
   .dashboard-card__media {
-    height: 420px;
+    height: 48vh;
   }
 }
 
