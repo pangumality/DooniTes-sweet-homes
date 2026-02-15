@@ -5,10 +5,16 @@ export function getEarthquakeZone(lat, lng) {
   // Zone III: Moderate Risk (Chennai, Mumbai, Kolkata)
   // Zone II: Low Risk (Bangalore, Hyderabad)
 
-  if (lat > 28) return "V"; 
-  if (lat > 22 && lat <= 28) return "IV"; 
-  if (lat > 15 && lat <= 22) return "III"; 
-  return "II"; 
+  let zone = "II";
+  if (lat > 28) zone = "V";
+  else if (lat > 22 && lat <= 28) zone = "IV";
+  else if (lat > 15 && lat <= 22) zone = "III";
+
+  // Eastern longitude band adjustment
+  if (lng > 85 && zone !== "V") {
+    zone = zone === "II" ? "III" : "IV";
+  }
+  return zone; 
 } 
 
 export function earthquakeRecommendations(zone) { 

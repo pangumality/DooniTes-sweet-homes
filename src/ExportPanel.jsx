@@ -1,7 +1,41 @@
 import { exportDXF } from "./export/dxfExporter";
-import { Download, Video, FileCode, Image } from "lucide-react";
+import { exportSoilReportPDF } from "./export/pdfExporter";
+import { Download, Video, FileCode, Image, FileText, Package, Loader2 } from "lucide-react";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import html2canvas from "html2canvas";
+import { useState } from "react";
 
-export default function ExportPanel({ data, floor }) {
+// Helper for video recording
+const recordCanvas = (canvas, durationMs) => {
+  return new Promise((resolve, reject) => {
+    if (!canvas.captureStream) {
+        reject(new Error("Canvas recording not supported"));
+        return;
+    }
+    try {
+        const stream = canvas.captureStream(30); // 30 FPS
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); 
+        const chunks = [];
+        recorder.ondataavailable = e => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: "video/webm" });
+            resolve(blob);
+        };
+        recorder.start();
+        setTimeout(() => {
+            if (recorder.state === "recording") recorder.stop();
+        }, durationMs);
+    } catch (e) {
+        reject(e);
+    }
+  });
+};
+
+export default function ExportPanel({ data, floor, reportData, setAnimationMode, generatedImages, dashboardMode, setDashboardMode }) {
+  const [isZipping, setIsZipping] = useState(false);
   
   const handleCaptureImage = () => {
     const canvas = document.getElementById("floor-plan-3d-canvas");
@@ -38,67 +72,174 @@ export default function ExportPanel({ data, floor }) {
       exportDXF(data.rooms, data.stairs, data.extras, data.columns);
   };
 
-  const handleRecordWalkthrough = () => {
+  const handleExportReport = () => {
+    if (!reportData) {
+        alert("Report data not available yet.");
+        return;
+    }
+    exportSoilReportPDF(reportData);
+  };
+
+  const handleRecordVideo = async (mode) => {
       const canvas = document.getElementById("floor-plan-3d-canvas");
       if (!canvas) {
           alert("3D Canvas not found. Make sure 3D view is visible.");
           return;
       }
 
-      // Check for support
-      if (!canvas.captureStream) {
-          alert("Your browser does not support canvas recording.");
-          return;
-      }
-
       try {
-        const stream = canvas.captureStream(30); // 30 FPS
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' }); // Use webm for broader support, or check types
+        if (setAnimationMode) setAnimationMode(mode);
         
-        const chunks = [];
-        recorder.ondataavailable = e => {
-            if (e.data.size > 0) chunks.push(e.data);
-        };
+        alert(`Recording ${mode} video... (will stop in 15 seconds)`);
+
+        // Wait for animation to start and textures to load
+        await new Promise(r => setTimeout(r, 1500));
         
-        recorder.onstop = () => {
-            const blob = new Blob(chunks, { type: "video/webm" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "walkthrough.webm"; // MP4 often requires proprietary codecs not always available in MediaRecorder API in all browsers. WebM is safer.
-            link.click();
-        };
+        const blob = await recordCanvas(canvas, 15000);
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${mode}_video.webm`; 
+        link.click();
+        
+        if (setAnimationMode) setAnimationMode('none');
+        alert("Recording finished! Downloading...");
 
-        recorder.start();
-        alert("Recording started... (will stop in 10 seconds)");
-
-        setTimeout(() => {
-            if (recorder.state === "recording") {
-                recorder.stop();
-                alert("Recording finished! Downloading...");
-            }
-        }, 10000);
       } catch (e) {
           console.error(e);
           alert("Error recording: " + e.message);
+          if (setAnimationMode) setAnimationMode('none');
+      }
+  };
+
+  const handleDownloadZip = async () => {
+      // 1. Check prerequisites & Handle Mode Switching
+      let canvas3d = document.getElementById("floor-plan-3d-canvas");
+      let switchedMode = false;
+
+      // If in AI mode, we need to switch to 3D model mode to capture the video
+      if (!canvas3d && dashboardMode === 'ai' && setDashboardMode) {
+          // alert("Switching to 3D Model View to record video...");
+          setDashboardMode('model');
+          switchedMode = true;
+          // Wait for DOM update and Canvas init
+          await new Promise(r => setTimeout(r, 2000));
+          canvas3d = document.getElementById("floor-plan-3d-canvas");
+      }
+
+      if (!canvas3d) {
+          alert("Please switch to '3D Walkthrough' mode to generate the project zip (Video required).");
+          return;
+      }
+
+      setIsZipping(true);
+      try {
+        const zip = new JSZip();
+        const root = zip.folder(`Project_Floor_${floor + 1}`);
+
+        // 2. Add AI Images
+        if (generatedImages?.interior) {
+            try {
+                const resp = await fetch(generatedImages.interior);
+                const blob = await resp.blob();
+                root.file("AI_Interior_Render.png", blob);
+            } catch (err) {
+                console.error("Failed to add interior image", err);
+            }
+        }
+        if (generatedImages?.exterior) {
+            try {
+                const resp = await fetch(generatedImages.exterior);
+                const blob = await resp.blob();
+                root.file("AI_Exterior_Render.png", blob);
+            } catch (err) {
+                console.error("Failed to add exterior image", err);
+            }
+        }
+
+        // 3. Capture 2D Model View (Snapshot)
+        const svgElement = document.getElementById(`floor-plan-svg-${floor}`);
+        if (svgElement) {
+            try {
+                // Capture the parent container to get the full view
+                const canvas2d = await html2canvas(svgElement.parentElement, { 
+                    scale: 2, 
+                    backgroundColor: "#ffffff",
+                    logging: false
+                });
+                const blob2d = await new Promise(r => canvas2d.toBlob(r, 'image/png'));
+                root.file("2D_Model_Blueprint.png", blob2d);
+            } catch (err) {
+                console.error("Failed to capture 2D plan", err);
+            }
+        }
+
+        // 4. Record Video (10s spin)
+        if (setAnimationMode) setAnimationMode('exterior'); // Start spin
+        await new Promise(r => setTimeout(r, 1000)); // Wait for render
+        const videoBlob = await recordCanvas(canvas3d, 10000); // 10s
+        root.file("3D_Walkthrough_Video.webm", videoBlob);
+        if (setAnimationMode) setAnimationMode('none');
+
+        // 5. Generate Zip
+        const content = await zip.generateAsync({ type: "blob" });
+        saveAs(content, `Project_Floor_${floor + 1}_Assets.zip`);
+
+      } catch (e) {
+          console.error("Zip generation failed:", e);
+          alert("Failed to generate zip: " + e.message);
+      } finally {
+          setIsZipping(false);
+          if (setAnimationMode) setAnimationMode('none');
+          
+          // Switch back to AI mode if we auto-switched
+          if (switchedMode && setDashboardMode) {
+              setDashboardMode('ai');
+          }
       }
   };
 
   return (
-    <div style={{ marginTop: '20px' }}>
-      <h3 style={{fontSize: '1rem', color: 'var(--primary)', marginTop: 0}}>Export & Share</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <button className="btn-secondary" onClick={handleCaptureImage} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <Image size={18} /> Capture 3D Image
+    <div className="export-panel">
+      <div className="export-panel__list">
+        <button className="btn-secondary export-panel__btn" onClick={handleCaptureImage}>
+          <span className="export-panel__icon" aria-hidden="true"><Image size={18} /></span>
+          <span>Capture 3D Image</span>
         </button>
-        <button className="btn-secondary" onClick={handleExportSVG} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <FileCode size={18} /> Export SVG (Floor {floor + 1})
+        <button className="btn-secondary export-panel__btn" onClick={handleExportSVG}>
+          <span className="export-panel__icon" aria-hidden="true"><FileCode size={18} /></span>
+          <span>Export SVG (Floor {floor + 1})</span>
         </button>
-        <button className="btn-secondary" onClick={handleExportDXF} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <Download size={18} /> Export DXF (CAD)
+        <button className="btn-secondary export-panel__btn" onClick={handleExportDXF}>
+          <span className="export-panel__icon" aria-hidden="true"><Download size={18} /></span>
+          <span>Export DXF (CAD)</span>
         </button>
-        <button className="btn-secondary" onClick={handleRecordWalkthrough} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start' }}>
-            <Video size={18} /> Record 3D Walkthrough (10s)
+        <button className="btn-secondary export-panel__btn" onClick={handleExportReport}>
+          <span className="export-panel__icon" aria-hidden="true"><FileText size={18} /></span>
+          <span>Export Soil & Site Report (PDF)</span>
+        </button>
+        <button className="btn-secondary export-panel__btn" onClick={() => handleRecordVideo('walkthrough')}>
+          <span className="export-panel__icon" aria-hidden="true"><Video size={18} /></span>
+          <span>Record 3D Walkthrough (15s)</span>
+        </button>
+        <button className="btn-secondary export-panel__btn" onClick={() => handleRecordVideo('orbit')}>
+          <span className="export-panel__icon" aria-hidden="true"><Video size={18} /></span>
+          <span>Record 360 Drone Video (15s)</span>
+        </button>
+
+        <button 
+            className="btn-primary export-panel__btn" 
+            onClick={handleDownloadZip}
+            disabled={isZipping}
+            style={{ marginTop: 10, justifyContent: 'center', backgroundColor: 'var(--primary)', color: 'white' }}
+        >
+          {isZipping ? (
+              <span className="export-panel__icon spin"><Loader2 size={18} /></span>
+          ) : (
+              <span className="export-panel__icon"><Package size={18} /></span>
+          )}
+          <span>{isZipping ? 'Packaging Assets...' : 'Download Project Zip'}</span>
         </button>
       </div>
     </div>

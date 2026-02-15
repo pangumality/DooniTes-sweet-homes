@@ -4,10 +4,14 @@ export function analyzeVentilation(room, plotWidth, plotDepth) {
   // Check windows if they exist
   if (room.windows) {
       room.windows.forEach(w => { 
-        if (w.y === 0) sides.add("North"); 
-        if (w.y === room.h) sides.add("South"); 
-        if (w.x === 0) sides.add("West"); 
-        if (w.x === room.w) sides.add("East"); 
+        const onNorth = w.y === 0 && room.y === 0;
+        const onSouth = w.y === room.h && room.y + room.h === plotDepth;
+        const onWest = w.x === 0 && room.x === 0;
+        const onEast = w.x === room.w && room.x + room.w === plotWidth;
+        if (onNorth) sides.add("North"); 
+        if (onSouth) sides.add("South"); 
+        if (onWest) sides.add("West"); 
+        if (onEast) sides.add("East"); 
       }); 
   }
 

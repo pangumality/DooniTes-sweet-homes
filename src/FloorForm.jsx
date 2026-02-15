@@ -1,3 +1,4 @@
+
 export default function FloorForm({ onSubmit }) { 
   const handleSubmit = e => { 
     e.preventDefault(); 
@@ -7,8 +8,10 @@ export default function FloorForm({ onSubmit }) {
       width: Number(data.get("width")), 
       depth: Number(data.get("depth")), 
       floors: Number(data.get("floors")), 
-      bedrooms: Number(data.get("bedrooms")), 
-      kitchens: Number(data.get("kitchens")), 
+      masterBedrooms: Number(data.get("masterBedrooms")),
+      kidsBedrooms: Number(data.get("kidsBedrooms")),
+      guestRooms: Number(data.get("guestRooms")),
+      kitchens: Number(data.get("kitchens")),  
       bathrooms: Number(data.get("bathrooms")),
       bathroomSize: data.get("bathroomSize"),
       masterBedroomSize: data.get("masterBedroomSize"),
@@ -34,7 +37,10 @@ export default function FloorForm({ onSubmit }) {
         <input type="number" name="floors" min="1" max="10" required defaultValue="2" />
       </div>
 
-      <input name="bedrooms" placeholder="Bedrooms per floor" required defaultValue="2" /> 
+      <input name="masterBedrooms" placeholder="Master Bedrooms (with attached bath)" required defaultValue="1" />
+      <input name="kidsBedrooms" placeholder="Kids Bedrooms" required defaultValue="2" />
+      <input name="guestRooms" placeholder="Guest Rooms" required defaultValue="1" />
+      
       <input name="kitchens" placeholder="Kitchens" required defaultValue="1" /> 
       
       {/* Bathrooms */}

@@ -6,10 +6,6 @@ export function generateColumns({ rooms, floors, floorHeight, spacing = 15, colu
     rooms 
       .filter(r => r.floor === floor) 
       .forEach(room => { 
-        // Snap to grid
-        const xStart = Math.ceil(room.x / spacing) * spacing; 
-        const yStart = Math.ceil(room.y / spacing) * spacing; 
-        
         // Ensure we cover the edges if they align, or at least the corners if possible?
         // The user's snippet used Math.floor.
         // If room starts at 10. floor(10/15)*15 = 0. 0 is outside.

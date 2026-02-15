@@ -12,7 +12,7 @@ export function analyzeSoil(lat, lng) {
 
   if (lat > 15 && lat <= 20) {
       return {
-          type: "Red Soil",
+          type: lng > 80 ? "Laterite" : "Red Soil",
           bearingCapacity: 250,
           foundationType: "Isolated Footing",
           riskLevel: "Low"
@@ -20,7 +20,7 @@ export function analyzeSoil(lat, lng) {
   }
 
   return { 
-    type: "Sandy / Alluvial", 
+    type: lng < 75 ? "Sandy / Alluvial" : "Silty",
     bearingCapacity: 180, 
     foundationType: "Isolated Footing", 
     riskLevel: "Medium" 
