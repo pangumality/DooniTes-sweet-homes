@@ -16,7 +16,7 @@ const ITEMS = [
   { key: "corridor", label: "Corridor", icon: Building, w: 20, h: 4 }
 ];
 
-export default function RoomsPalette({ title = "Rooms", ariaLabel = "Draggable rooms" }) {
+export default function RoomsPalette({ title = "Rooms", ariaLabel = "Draggable rooms", collapsed = false, onToggle = () => {} }) {
   const onDragStart = (e, item) => {
     const payload = JSON.stringify({ type: item.key, w: item.w, h: item.h, label: item.label });
     e.dataTransfer.setData("application/json", payload);
@@ -28,32 +28,45 @@ export default function RoomsPalette({ title = "Rooms", ariaLabel = "Draggable r
       className="section-card"
       style={{ width: "100%", alignSelf: "stretch", boxSizing: "border-box", padding: 8 }}
     >
-      <div className="section-card__header" style={{ paddingBottom: 6 }}>
-        <h3 className="section-card__title" style={{ fontSize: "0.95rem" }}>{title}</h3>
+      <div className="section-card__header" style={{ paddingBottom: 6, display: "flex", alignItems: "center" }}>
+        <h3 className="section-card__title" style={{ fontSize: "0.95rem", flex: 1 }}>{title}</h3>
+        <button 
+          type="button" 
+          className="btn-icon" 
+          aria-expanded={!collapsed}
+          aria-controls="rooms-palette-body"
+          onClick={onToggle}
+          title={collapsed ? "Expand Rooms" : "Collapse Rooms"}
+          style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", padding: 4, borderRadius: 4 }}
+        >
+          <span style={{ fontSize: "0.85rem" }}>{collapsed ? "Show" : "Hide"}</span>
+        </button>
       </div>
-      <div className="section-card__body" role="list" aria-label={ariaLabel} style={{ overflow: "auto", padding: 6 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
-          {ITEMS.map(({ key, label, icon: Icon, w, h }) => (
-            <div
-              key={key}
-              role="listitem"
-              draggable
-              onDragStart={(e) => onDragStart(e, { key, label, w, h })}
-              className="feature-tile"
-              aria-grabbed="false"
-              style={{ cursor: "grab", padding: 6 }}
-              >
-              <span className="feature-tile__left">
-                <span className="feature-tile__icon">
-                  <Icon size={16} />
+      {!collapsed && (
+        <div id="rooms-palette-body" className="section-card__body" role="list" aria-label={ariaLabel} style={{ overflow: "auto", padding: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
+            {ITEMS.map(({ key, label, icon: Icon, w, h }) => (
+              <div
+                key={key}
+                role="listitem"
+                draggable
+                onDragStart={(e) => onDragStart(e, { key, label, w, h })}
+                className="feature-tile"
+                aria-grabbed="false"
+                style={{ cursor: "grab", padding: 6 }}
+                >
+                <span className="feature-tile__left">
+                  <span className="feature-tile__icon">
+                    <Icon size={16} />
+                  </span>
+                  <span className="feature-tile__label" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%", fontSize: "0.95rem" }}>{label}</span>
                 </span>
-                <span className="feature-tile__label" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%", fontSize: "0.95rem" }}>{label}</span>
-              </span>
-              <span className="room-muted">{w}′×{h}′</span>
-            </div>
-          ))}
+                <span className="room-muted">{w}′×{h}′</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
