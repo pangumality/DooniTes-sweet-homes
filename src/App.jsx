@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; 
+import { useEffect, useRef, useState } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck, MessageCircle, ArrowRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
@@ -478,6 +478,7 @@ function PlannerApp() {
   const [selectedVariant, setSelectedVariant] = useState(0);
   const isWide = useMediaQuery("(min-width: 1200px)");
   const isMedium = useMediaQuery("(min-width: 768px)");
+  const exportPanelRef = useRef(null);
   const gridClass = isWide ? "grid-12" : isMedium ? "grid-8" : "grid-4";
 
   const updateField = (field, value) => {
@@ -1479,7 +1480,7 @@ function PlannerApp() {
                         </div>
                         <div className="topbarActions">
                           <button className="btn-primary" onClick={() => setFullScreen(true)}>Full Screen</button>
-                          <a className="btn-secondary" href="#export-panel">Export</a>
+                          <button className="btn-secondary" onClick={() => exportPanelRef.current?.downloadZip?.()}>Export</button>
                           <button className="btn-secondary" onClick={() => setStep(1)}>Start New Project</button>
                         </div>
                       </div>
@@ -1771,6 +1772,7 @@ function PlannerApp() {
                                 </div>
                                 <div className="section-card__body">
                                     <ExportPanel 
+                                        ref={exportPanelRef}
                                         data={data} 
                                         floor={floor} 
                                         reportData={reportData} 
@@ -1778,6 +1780,8 @@ function PlannerApp() {
                                         generatedImages={generatedImages}
                                         dashboardMode={dashboardMode}
                                         setDashboardMode={setDashboardMode}
+                                        viewMode={viewMode}
+                                        setViewMode={setViewMode}
                                     />
                                 </div>
                             </div>

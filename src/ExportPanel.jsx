@@ -4,7 +4,7 @@ import { Download, Video, FileCode, Image, FileText, Package, Loader2 } from "lu
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 
 // Helper for video recording
 const recordCanvas = (canvas, durationMs) => {
@@ -34,7 +34,7 @@ const recordCanvas = (canvas, durationMs) => {
   });
 };
 
-export default function ExportPanel({ data, floor, reportData, setAnimationMode, generatedImages, dashboardMode, setDashboardMode }) {
+const ExportPanel = forwardRef(function ExportPanel({ data, floor, reportData, setAnimationMode, generatedImages, dashboardMode, setDashboardMode, viewMode, setViewMode }, ref) {
   const [isZipping, setIsZipping] = useState(false);
   const hasAiRenders = Boolean(generatedImages?.interior && generatedImages?.exterior);
   
@@ -122,6 +122,8 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
       // 1. Check prerequisites & Handle Mode Switching
       let canvas3d = document.getElementById("floor-plan-3d-canvas");
       let switchedMode = false;
+      let switchedViewMode = false;
+      const previousViewMode = viewMode;
 
       // If in AI mode, we need to switch to 3D model mode to capture the video
       if (!canvas3d && dashboardMode === 'ai' && setDashboardMode) {
@@ -130,6 +132,13 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
           switchedMode = true;
           // Wait for DOM update and Canvas init
           await new Promise(r => setTimeout(r, 2000));
+          canvas3d = document.getElementById("floor-plan-3d-canvas");
+      }
+
+      if (!canvas3d && viewMode === '2d' && setViewMode) {
+          setViewMode('exterior');
+          switchedViewMode = true;
+          await new Promise(r => setTimeout(r, 1500));
           canvas3d = document.getElementById("floor-plan-3d-canvas");
       }
 
@@ -197,6 +206,9 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
       } finally {
           setIsZipping(false);
           if (setAnimationMode) setAnimationMode('none');
+          if (switchedViewMode && setViewMode) {
+              setViewMode(previousViewMode);
+          }
           
           // Switch back to AI mode if we auto-switched
           if (switchedMode && setDashboardMode) {
@@ -204,6 +216,10 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
           }
       }
   };
+
+  useImperativeHandle(ref, () => ({
+      downloadZip: handleDownloadZip
+  }), [handleDownloadZip]);
 
   return (
     <div className="export-panel">
@@ -251,4 +267,6 @@ export default function ExportPanel({ data, floor, reportData, setAnimationMode,
       </div>
     </div>
   );
-}
+});
+
+export default ExportPanel;
