@@ -37,6 +37,7 @@ const recordCanvas = (canvas, durationMs) => {
 const ExportPanel = forwardRef(function ExportPanel({ data, floor, reportData, setAnimationMode, generatedImages, dashboardMode, setDashboardMode, viewMode, setViewMode }, ref) {
   const [isZipping, setIsZipping] = useState(false);
   const hasAiRenders = Boolean(generatedImages?.interior && generatedImages?.exterior);
+  const [showMissingAiModal, setShowMissingAiModal] = useState(false);
   
   const handleCaptureImage = () => {
     const canvas = document.getElementById("floor-plan-3d-canvas");
@@ -116,7 +117,7 @@ const ExportPanel = forwardRef(function ExportPanel({ data, floor, reportData, s
 
   const handleDownloadZip = async () => {
       if (!hasAiRenders) {
-          alert("Generate both Interior and Exterior AI renders before downloading the project zip.");
+          setShowMissingAiModal(true);
           return;
       }
       // 1. Check prerequisites & Handle Mode Switching
@@ -265,6 +266,26 @@ const ExportPanel = forwardRef(function ExportPanel({ data, floor, reportData, s
           <span>{isZipping ? 'Packaging Assets...' : 'Download Project Zip'}</span>
         </button>
       </div>
+      {showMissingAiModal && (
+        <div className="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="missing-ai-title">
+          <div className="modalCard">
+            <h3 id="missing-ai-title" className="modalTitle">Generate AI Renders</h3>
+            <p className="text-light">Generate both Interior and Exterior AI renders to enable the project zip export.</p>
+            <div className="modalActions">
+              <button className="btn-secondary" onClick={() => setShowMissingAiModal(false)}>Close</button>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  setShowMissingAiModal(false);
+                  if (setDashboardMode) setDashboardMode('ai');
+                }}
+              >
+                Go to AI Render
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

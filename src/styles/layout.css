@@ -275,6 +275,38 @@
   border: 1px solid var(--border);
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10000;
+}
+
+.modalCard {
+  width: min(440px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  padding: 20px;
+}
+
+.modalTitle {
+  margin: 0 0 8px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
 .fullScreenMedia {
   flex: 1 1 auto;
   min-height: 0;
