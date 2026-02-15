@@ -10,11 +10,73 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
         const dx = (e.clientX - dragState.startX) / scale;
         const dy = (e.clientY - dragState.startY) / scale;
         
+        const SNAP_THRESHOLD = 0.5; // Snap within 0.5 ft (6 inches)
+        
+        // Get other rooms on the same floor for snapping
+        const otherRooms = rooms.filter((r, i) => i !== dragState.originalIndex && r.floor === floor);
+        const vLines = [];
+        const hLines = [];
+        
+        otherRooms.forEach(r => {
+            vLines.push(r.x, r.x + r.w);
+            hLines.push(r.y, r.y + r.h);
+        });
+        
+        // Also snap to plot boundaries? Optional, but good.
+        vLines.push(0, plotWidth);
+        hLines.push(0, plotDepth);
+
+        const getBestSnap = (val, candidates) => {
+            let best = val;
+            let minDiff = SNAP_THRESHOLD;
+            let snapped = false;
+            for (let c of candidates) {
+                const diff = Math.abs(val - c);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    best = c;
+                    snapped = true;
+                }
+            }
+            return { val: best, snapped };
+        };
+
         if (dragState.action === 'move') {
+            let rawX = dragState.initialRoomX + dx;
+            let rawY = dragState.initialRoomY + dy;
+            
+            // Snap X
+            const snapLeft = getBestSnap(rawX, vLines);
+            const snapRight = getBestSnap(rawX + dragState.initialRoomW, vLines);
+            
+            let finalX = rawX;
+            if (snapLeft.snapped && snapRight.snapped) {
+                // Both snapped, prioritize the closer one? Or just left.
+                // If both are snapped, it fits perfectly in a gap.
+                finalX = snapLeft.val; 
+            } else if (snapLeft.snapped) {
+                finalX = snapLeft.val;
+            } else if (snapRight.snapped) {
+                finalX = snapRight.val - dragState.initialRoomW;
+            }
+
+            // Snap Y
+            const snapTop = getBestSnap(rawY, hLines);
+            const snapBottom = getBestSnap(rawY + dragState.initialRoomH, hLines);
+            
+            let finalY = rawY;
+            if (snapTop.snapped && snapBottom.snapped) {
+                finalY = snapTop.val;
+            } else if (snapTop.snapped) {
+                finalY = snapTop.val;
+            } else if (snapBottom.snapped) {
+                finalY = snapBottom.val - dragState.initialRoomH;
+            }
+
             setDragState(prev => ({
                 ...prev,
-                currentX: prev.initialRoomX + dx,
-                currentY: prev.initialRoomY + dy
+                currentX: finalX,
+                currentY: finalY
             }));
         } else if (dragState.action === 'resize') {
             let newW = dragState.initialRoomW;
@@ -24,19 +86,48 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
 
             const handle = dragState.handle;
 
-            if (handle.includes('e')) newW = Math.max(2, dragState.initialRoomW + dx);
-            if (handle.includes('w')) {
-                const maxDx = dragState.initialRoomW - 2;
-                const safeDx = Math.min(dx, maxDx);
-                newW = dragState.initialRoomW - safeDx;
-                newX = dragState.initialRoomX + safeDx;
+            // X-Axis Resize
+            if (handle.includes('e')) {
+                // Moving Right Edge
+                const rawRight = dragState.initialRoomX + dragState.initialRoomW + dx;
+                const snap = getBestSnap(rawRight, vLines);
+                const finalRight = snap.snapped ? snap.val : rawRight;
+                newW = Math.max(2, finalRight - dragState.initialRoomX);
             }
-            if (handle.includes('s')) newH = Math.max(2, dragState.initialRoomH + dy);
+            if (handle.includes('w')) {
+                // Moving Left Edge
+                const rawLeft = dragState.initialRoomX + dx;
+                const snap = getBestSnap(rawLeft, vLines);
+                const finalLeft = snap.snapped ? snap.val : rawLeft;
+                
+                // Ensure min width
+                const maxLeft = dragState.initialRoomX + dragState.initialRoomW - 2;
+                const safeLeft = Math.min(finalLeft, maxLeft);
+                
+                newX = safeLeft;
+                newW = dragState.initialRoomX + dragState.initialRoomW - safeLeft;
+            }
+
+            // Y-Axis Resize
+            if (handle.includes('s')) {
+                // Moving Bottom Edge
+                const rawBottom = dragState.initialRoomY + dragState.initialRoomH + dy;
+                const snap = getBestSnap(rawBottom, hLines);
+                const finalBottom = snap.snapped ? snap.val : rawBottom;
+                newH = Math.max(2, finalBottom - dragState.initialRoomY);
+            }
             if (handle.includes('n')) {
-                const maxDy = dragState.initialRoomH - 2;
-                const safeDy = Math.min(dy, maxDy);
-                newH = dragState.initialRoomH - safeDy;
-                newY = dragState.initialRoomY + safeDy;
+                // Moving Top Edge
+                const rawTop = dragState.initialRoomY + dy;
+                const snap = getBestSnap(rawTop, hLines);
+                const finalTop = snap.snapped ? snap.val : rawTop;
+                
+                // Ensure min height
+                const maxTop = dragState.initialRoomY + dragState.initialRoomH - 2;
+                const safeTop = Math.min(finalTop, maxTop);
+                
+                newY = safeTop;
+                newH = dragState.initialRoomY + dragState.initialRoomH - safeTop;
             }
 
             setDragState(prev => ({
@@ -97,26 +188,24 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
   }; 
 
   const roomColors = {
-      living: "#eab308",   // Yellow
-      kitchen: "#f97316",  // Orange
-      bedroom: "#d946ef",  // Pink
-      master: "#c026d3",   // Darker Pink
-      guest: "#a855f7",    // Purple
-      bathroom: "#06b6d4", // Cyan
-      bath: "#06b6d4",     // Cyan (alias)
-      parking: "#3b82f6",  // Blue
-      garage: "#3b82f6",   // Blue
-      office: "#8b5cf6",   // Violet
-      garden: "#10b981",   // Green
-      balcony: "#f43f5e",  // Rose
-      stairs: "#64748b",   // Slate
-      corridor: "#e2e8f0", // Light Slate
-      default: "#6366f1"   // Indigo
+      living: "url(#living-tile)",
+      kitchen: "url(#living-tile)",
+      bedroom: "url(#wood)",
+      master: "url(#wood)",
+      guest: "url(#wood)",
+      bathroom: "url(#tile-small)",
+      bath: "url(#tile-small)",
+      parking: "url(#garage-tile)",
+      garage: "url(#garage-tile)",
+      office: "url(#wood)",
+      garden: "url(#grass)",
+      balcony: "url(#wood)",
+      stairs: "url(#wood)",
+      corridor: "url(#tile)",
+      default: "#f3f4f6"
   };
 
-  const CAR_IMAGE_URL = "/icons/vecteezy_car-3d-illustration-icon_28213286.png";
-
-  const getRoomColor = (type) => {
+  const getRoomFill = (type) => {
       if (!type) return roomColors.default;
       const key = Object.keys(roomColors).find(k => type.toLowerCase().includes(k));
       return key ? roomColors[key] : roomColors.default;
@@ -141,6 +230,335 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
     const inches = Math.round((val - feet) * 12);
     if (inches === 12) return `${feet + 1}' 0"`;
     return `${feet}' ${inches}"`;
+  };
+
+  const renderGarageVehicles = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              {/* White background to ensure clarity if image has transparency */}
+              <rect width={contentW} height={contentH} fill="white" />
+              <image 
+                  href="/intended_image/garage.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderBathroomInterior = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/bathrrom.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderGardenLandscape = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/garden.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderKitchen = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/kitchen.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderGuestBedroom = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/guestroomupdated.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderKidsBedroom = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/kidsbedroom.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderMasterBedroom = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/mastersbedroom.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderLivingRoomFurniture = (w, h) => {
+      const isHorizontal = w > h;
+      const contentW = isHorizontal ? h : w;
+      const contentH = isHorizontal ? w : h;
+      
+      const groupTransform = isHorizontal 
+          ? `translate(${w}, 0) rotate(90)` 
+          : ``;
+
+      return (
+          <g transform={groupTransform}>
+              <image 
+                  href="/intended_image/livingroom.png" 
+                  x="0" 
+                  y="0" 
+                  width={contentW} 
+                  height={contentH} 
+                  preserveAspectRatio="none"
+                  style={{ imageRendering: 'high-quality' }}
+              />
+          </g>
+      );
+  };
+
+  const renderFurniture = (room) => {
+    const type = room.type.toLowerCase();
+    const w = room.w * scale;
+    const h = room.h * scale;
+    const cx = w / 2;
+    const cy = h / 2;
+    const stroke = "#555";
+    
+    // Furniture Shadow & Gradient
+    const dropShadow = "url(#furniture-shadow)";
+    const bedGradient = "url(#bed-gradient)";
+    const pillowGradient = "url(#pillow-gradient)";
+
+    if (type.includes('guest')) {
+        return (
+            <g>
+                {renderGuestBedroom(w, h)}
+            </g>
+        );
+    }
+    
+    if (type.includes('kids') || type.includes('child')) {
+        return (
+            <g>
+                {renderKidsBedroom(w, h)}
+            </g>
+        );
+    }
+
+    if (type.includes('master')) {
+        return (
+            <g>
+                {renderMasterBedroom(w, h)}
+            </g>
+        );
+    }
+
+    if (type.includes('bed')) {
+        const isMaster = type.includes('master');
+        const bedW = (isMaster ? 6 : 5) * scale;
+        const bedH = (isMaster ? 7 : 6.5) * scale;
+        return (
+            <g transform={`translate(${cx - bedW/2}, ${cy - bedH/2})`} filter={dropShadow}>
+                {/* Bed Frame */}
+                <rect width={bedW} height={bedH} rx="2" fill="#e5e7eb" stroke={stroke} strokeWidth="0.5" />
+                {/* Mattress/Sheets */}
+                <rect x="2" y="2" width={bedW-4} height={bedH-4} rx="2" fill={bedGradient} />
+                {/* Folded Blanket at bottom */}
+                <rect x="2" y={bedH * 0.6} width={bedW-4} height={bedH * 0.4 - 2} rx="2" fill="#9ca3af" opacity="0.8" />
+                
+                {/* Pillows */}
+                <rect x={6} y={6} width={bedW/2 - 10} height={1.2*scale} rx="4" fill={pillowGradient} stroke="#ddd" strokeWidth="0.5" />
+                <rect x={bedW/2 + 4} y={6} width={bedW/2 - 10} height={1.2*scale} rx="4" fill={pillowGradient} stroke="#ddd" strokeWidth="0.5" />
+            </g>
+        );
+    }
+    if (type.includes('living')) {
+        return (
+            <g>
+                {renderLivingRoomFurniture(w, h)}
+            </g>
+        );
+    }
+    if (type.includes('kitchen')) {
+        return (
+            <g>
+                {renderKitchen(w, h)}
+            </g>
+        );
+    }
+    if (type.includes('bath')) {
+        return (
+            <g>
+                {renderBathroomInterior(w, h)}
+            </g>
+        );
+    }
+    if (type.includes('garden')) {
+        return (
+            <g>
+                {renderGardenLandscape(w, h)}
+            </g>
+        );
+    }
+    if (type.includes('parking') || type.includes('garage')) {
+        return (
+            <g>
+                {renderGarageVehicles(w, h)}
+            </g>
+        );
+    }
+    return null;
+  };
+
+  const renderExternalDimensions = (items) => {
+      if (items.length === 0) return null;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      items.forEach(r => {
+          if (r.x < minX) minX = r.x;
+          if (r.y < minY) minY = r.y;
+          if (r.x + r.w > maxX) maxX = r.x + r.w;
+          if (r.y + r.h > maxY) maxY = r.y + r.h;
+      });
+
+      const pad = 20; // px offset for dimension lines
+      const tick = 5;
+      
+      const x1 = minX * scale;
+      const x2 = maxX * scale;
+      const y1 = minY * scale;
+      const y2 = maxY * scale;
+      
+      const dimColor = "var(--text)";
+
+      return (
+          <g className="external-dimensions" pointerEvents="none">
+              {/* Top Width */}
+              <line x1={x1} y1={y1 - pad} x2={x2} y2={y1 - pad} stroke={dimColor} strokeWidth="1" />
+              <line x1={x1} y1={y1 - pad - tick} x2={x1} y2={y1 - pad + tick} stroke={dimColor} strokeWidth="1" />
+              <line x1={x2} y1={y1 - pad - tick} x2={x2} y2={y1 - pad + tick} stroke={dimColor} strokeWidth="1" />
+              <text x={(x1 + x2)/2} y={y1 - pad - 8} textAnchor="middle" fill={dimColor} fontSize="12" fontWeight="bold">
+                  {formatDimension(maxX - minX)}
+              </text>
+
+              {/* Left Depth */}
+              <line x1={x1 - pad} y1={y1} x2={x1 - pad} y2={y2} stroke={dimColor} strokeWidth="1" />
+              <line x1={x1 - pad - tick} y1={y1} x2={x1 - pad + tick} y2={y1} stroke={dimColor} strokeWidth="1" />
+              <line x1={x1 - pad - tick} y1={y2} x2={x1 - pad + tick} y2={y2} stroke={dimColor} strokeWidth="1" />
+              <text x={x1 - pad - 8} y={(y1 + y2)/2} textAnchor="middle" transform={`rotate(-90, ${x1 - pad - 8}, ${(y1 + y2)/2})`} fill={dimColor} fontSize="12" fontWeight="bold">
+                  {formatDimension(maxY - minY)}
+              </text>
+          </g>
+      );
   };
 
   // Helper to render doors with swing arcs
@@ -194,8 +612,8 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                 fill="var(--surface)" 
             />
             {/* Swing Arc & Leaf */}
-            <path d={path} stroke="#38bdf8" fill="none" strokeWidth="1.5" />
-            <text x={labelX} y={labelY} fontSize="8" fill="#38bdf8" textAnchor="middle" alignmentBaseline="middle">D</text>
+            <path d={path} stroke="#0ea5e9" fill="none" strokeWidth="4" strokeLinecap="round" />
+            {/* <text x={labelX} y={labelY} fontSize="8" fill="#38bdf8" textAnchor="middle" alignmentBaseline="middle">D</text> */}
         </g>
     );
   };
@@ -237,6 +655,87 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
       style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "16px" }}
     > 
       <defs>
+          {/* --- TEXTURES --- */}
+          {/* 1. Tile (Living/Kitchen) */}
+          <pattern id="tile" width="30" height="30" patternUnits="userSpaceOnUse">
+              <rect width="30" height="30" fill="#f8fafc" />
+              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#e2e8f0" strokeWidth="1"/>
+          </pattern>
+          {/* 2. Small Tile (Bath) */}
+          <pattern id="tile-small" width="10" height="10" patternUnits="userSpaceOnUse">
+              <rect width="10" height="10" fill="#f1f5f9" />
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#cbd5e1" strokeWidth="0.5"/>
+          </pattern>
+          {/* 3. Wood (Bedroom) */}
+          <pattern id="wood" width="100" height="20" patternUnits="userSpaceOnUse">
+              <rect width="100" height="20" fill="#fdf6e3" /> {/* Beige base */}
+              <line x1="0" y1="19" x2="100" y2="19" stroke="#e6dccd" strokeWidth="1" />
+              {/* Grain lines */}
+              <path d="M 10 5 L 40 5 M 60 12 L 90 12" stroke="#e6dccd" strokeWidth="1" strokeLinecap="round" />
+          </pattern>
+          {/* Lawn Texture Pattern */}
+           <pattern id="lawn-pattern" width="512" height="512" patternUnits="userSpaceOnUse">
+               <image href="/intended_image/lawnupdated.png" x="0" y="0" width="512" height="512" preserveAspectRatio="xMidYMid slice" />
+           </pattern>
+          {/* 4. Grass (Garden) - Updated to use lawn texture */}
+          <pattern id="grass" width="512" height="512" patternUnits="userSpaceOnUse">
+              <rect width="512" height="512" fill="url(#lawn-pattern)" />
+          </pattern>
+          {/* 5. Concrete (Parking) -> Updated to Garage Tile */}
+          <pattern id="garage-tile" width="20" height="20" patternUnits="userSpaceOnUse">
+              <rect width="20" height="20" fill="#e5e5e0" /> {/* Light warm grey */}
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d4d4d8" strokeWidth="1"/>
+          </pattern>
+          {/* 6. Living Room Tile (Beige) */}
+          <pattern id="living-tile" width="40" height="40" patternUnits="userSpaceOnUse">
+              <rect width="40" height="40" fill="#fdfbf7" /> {/* Warm beige white */}
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e7e5e4" strokeWidth="1"/>
+          </pattern>
+          <pattern id="concrete" width="20" height="20" patternUnits="userSpaceOnUse">
+              <rect width="20" height="20" fill="#e5e7eb" />
+              <circle cx="10" cy="10" r="0.5" fill="#9ca3af" />
+              <circle cx="4" cy="16" r="0.5" fill="#9ca3af" />
+          </pattern>
+
+          {/* --- VEHICLE GRADIENTS --- */}
+          <linearGradient id="car-body" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#374151" />
+              <stop offset="50%" stopColor="#111827" />
+              <stop offset="100%" stopColor="#374151" />
+          </linearGradient>
+          <linearGradient id="car-glass" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1f2937" />
+              <stop offset="50%" stopColor="#4b5563" />
+              <stop offset="100%" stopColor="#1f2937" />
+          </linearGradient>
+          <linearGradient id="bike-body" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1f2937" />
+              <stop offset="100%" stopColor="#000000" />
+          </linearGradient>
+
+          {/* --- GRADIENTS --- */}
+          <linearGradient id="bed-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#f3f4f6" />
+          </linearGradient>
+          <linearGradient id="pillow-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#e5e7eb" />
+          </linearGradient>
+
+          {/* --- FILTERS --- */}
+          <filter id="furniture-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+              <feOffset dx="2" dy="2" result="offsetblur" />
+              <feComponentTransfer>
+                  <feFuncA type="linear" slope="0.3" />
+              </feComponentTransfer>
+              <feMerge>
+                  <feMergeNode />
+                  <feMergeNode in="SourceGraphic" />
+              </feMerge>
+          </filter>
+
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
               <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--border)" strokeWidth="1"/>
           </pattern>
@@ -244,7 +743,11 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
             <polygon points="0 0, 10 3.5, 0 7" fill="var(--text-light)" />
           </marker>
       </defs>
-      <rect width="100%" height="100%" fill="url(#grid)" />
+      {/* Background */}
+      <rect width="1000%" height="1000%" x="-500%" y="-500%" fill="#FEFDF5" />
+      
+      {/* External Dimensions */}
+      {renderExternalDimensions(currentRooms)}
 
       {/* Plot Boundary */}
       <rect 
@@ -261,7 +764,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
       {extras
         .filter(e => e.floor === floor)
         .map((extra, i) => {
-            const color = getRoomColor(extra.type);
+            const fill = getRoomFill(extra.type);
             const centerX = extra.x * scale + (extra.w * scale) / 2;
             const centerY = extra.y * scale + (extra.h * scale) / 2;
             
@@ -272,39 +775,49 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                         y={extra.y * scale} 
                         width={extra.w * scale} 
                         height={extra.h * scale} 
-                        fill={color}
-                        fillOpacity="0.2"
-                        stroke={color}
-                        strokeWidth="2"
-                        rx="4"
+                        fill={fill}
+                        stroke="#666"
+                        strokeWidth={(extra.type.toLowerCase().includes('parking') || extra.type.toLowerCase().includes('garage')) ? "5" : "1"}
+                        rx="0"
                     />
-                     {/* Car Image for Parking/Garage */}
+                     {/* Car/Bike for Parking/Garage */}
                     {(extra.type.toLowerCase().includes('parking') || extra.type.toLowerCase().includes('garage')) && (
-                        <image
-                            href={CAR_IMAGE_URL}
-                            x={extra.x * scale + (extra.w * scale - Math.min(extra.w, extra.h) * scale * 0.8) / 2}
-                            y={extra.y * scale + (extra.h * scale - Math.min(extra.w, extra.h) * scale * 1.6) / 2} 
-                            width={Math.min(extra.w, extra.h) * scale * 0.8} 
-                            height={Math.min(extra.w, extra.h) * scale * 1.6} 
-                            preserveAspectRatio="none"
-                            style={{ pointerEvents: 'none', opacity: 0.9 }}
-                            transform={`rotate(${extra.h > extra.w ? 0 : -90}, ${centerX}, ${centerY})`}
-                        />
+                        <g transform={`translate(${extra.x * scale}, ${extra.y * scale})`}>
+                            {renderGarageVehicles(extra.w * scale, extra.h * scale)}
+                        </g>
                     )}
-                    <text 
-                        x={centerX} 
-                        y={centerY} 
-                        fontSize="12" 
-                        fontWeight="bold"
-                        stroke="white" 
-                        strokeWidth="3" 
-                        strokeLinejoin="round"
-                        fill="var(--text)"
-                        textAnchor="middle"
-                        style={{ paintOrder: "stroke" }}
-                    > 
-                    {extra.type ? extra.type.charAt(0).toUpperCase() + extra.type.slice(1) : "Area"} 
-                    </text>
+                    {(!extra.type.toLowerCase().includes('parking') && !extra.type.toLowerCase().includes('garage') && !extra.type.toLowerCase().includes('garden')) && (
+                        <>
+                            <text 
+                                x={centerX} 
+                                y={centerY - 12} 
+                                fontSize="24" 
+                                fontWeight="bold"
+                                stroke="white" 
+                                strokeWidth="4" 
+                                strokeLinejoin="round"
+                                fill="var(--text)"
+                                textAnchor="middle"
+                                style={{ paintOrder: "stroke" }}
+                            > 
+                            {extra.type ? extra.type.charAt(0).toUpperCase() + extra.type.slice(1) : "Area"} 
+                            </text>
+                            <text 
+                                x={centerX} 
+                                y={centerY + 22} 
+                                fontSize="18" 
+                                fontWeight="bold"
+                                stroke="white" 
+                                strokeWidth="3" 
+                                strokeLinejoin="round"
+                                fill="var(--text)"
+                                textAnchor="middle"
+                                style={{ paintOrder: "stroke" }}
+                            > 
+                            {formatDimension(extra.w)} x {formatDimension(extra.h)}
+                            </text>
+                        </>
+                    )}
                 </g>
             );
         })}
@@ -324,7 +837,7 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
           
           const centerX = rX * scale + (rW * scale) / 2;
           const centerY = rY * scale + (rH * scale) / 2;
-          const color = getRoomColor(room.type);
+          const fill = getRoomFill(room.type);
 
           return ( 
           <g 
@@ -338,57 +851,52 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
               y={rY * scale} 
               width={rW * scale} 
               height={rH * scale} 
-              fill={color}
-              fillOpacity={isDragging ? "0.5" : "0.2"}
-              stroke={color}
-              strokeWidth="2"
-              rx="4"
+              fill={fill}
+              fillOpacity={isDragging ? "0.8" : "1"}
+              stroke="rgb(28, 55, 74)" 
+              strokeWidth={(room.type.toLowerCase().includes('garden')) ? "5" : (room.type.toLowerCase().includes('parking') || room.type.toLowerCase().includes('garage')) ? "5" : (room.type.toLowerCase().includes('bath')) ? "7" : "15"}
+              strokeLinejoin="round"
+              rx="0"
             /> 
-
-            {/* Car Image for Parking/Garage */}
-            {(room.type.toLowerCase().includes('parking') || room.type.toLowerCase().includes('garage')) && (
-                <image
-                    href={CAR_IMAGE_URL}
-                    x={rX * scale + (rW * scale - Math.min(rW, rH) * scale * 0.8) / 2}
-                    y={rY * scale + (rH * scale - Math.min(rW, rH) * scale * 1.6) / 2} 
-                    width={Math.min(rW, rH) * scale * 0.8} 
-                    height={Math.min(rW, rH) * scale * 1.6} // Assuming 1:2 aspect ratio for car
-                    preserveAspectRatio="none"
-                    style={{ pointerEvents: 'none', opacity: 0.9 }}
-                    transform={`rotate(${rH > rW ? 0 : -90}, ${centerX}, ${centerY})`}
-                />
-            )}
+            
+            {/* Furniture */}
+            <g transform={`translate(${rX * scale}, ${rY * scale})`}>
+                {renderFurniture({ ...room, w: rW, h: rH })}
+            </g>
             
             {/* Room Text */}
-            <g style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                <text 
-                    x={centerX} 
-                    y={centerY - 5} 
-                    fontSize="12" 
-                    fontWeight="bold"
-                    stroke="white" 
-                    strokeWidth="3" 
-                    strokeLinejoin="round"
-                    fill="var(--text)"
-                    textAnchor="middle"
-                    style={{ paintOrder: "stroke" }}
-                > 
-                {room.type ? room.type.charAt(0).toUpperCase() + room.type.slice(1) : "Room"} 
-                </text> 
-                <text 
-                    x={centerX} 
-                    y={centerY + 10} 
-                    fontSize="10" 
-                    stroke="white" 
-                    strokeWidth="3" 
-                    strokeLinejoin="round"
-                    fill="var(--text-light)"
-                    textAnchor="middle"
-                    style={{ paintOrder: "stroke" }}
-                > 
-                {formatDimension(rW)} x {formatDimension(rH)}
-                </text>
-            </g>
+            {(!room.type.toLowerCase().includes('parking') && !room.type.toLowerCase().includes('garage') && !room.type.toLowerCase().includes('garden') && !room.type.toLowerCase().includes('bath') && !room.type.toLowerCase().includes('bathroom')) && (
+                <g style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                    <text 
+                        x={centerX} 
+                        y={centerY - 12} 
+                        fontSize="24" 
+                        fontWeight="bold"
+                        stroke="white" 
+                        strokeWidth="4" 
+                        strokeLinejoin="round"
+                        fill="#1f2937"
+                        textAnchor="middle"
+                        style={{ paintOrder: "stroke" }}
+                    > 
+                    {room.type ? room.type.charAt(0).toUpperCase() + room.type.slice(1) : "Room"} 
+                    </text> 
+                    <text 
+                        x={centerX} 
+                        y={centerY + 22} 
+                        fontSize="18" 
+                        fontWeight="bold"
+                        stroke="white" 
+                        strokeWidth="3" 
+                        strokeLinejoin="round"
+                        fill="#1f2937"
+                        textAnchor="middle"
+                        style={{ paintOrder: "stroke" }}
+                    > 
+                    {formatDimension(rW)} x {formatDimension(rH)}
+                    </text>
+                </g>
+            )}
 
             {/* Delete Control */}
             {onDeleteRoom && (
@@ -451,10 +959,10 @@ export default function FloorPlan2D({ rooms, stairs, extras = [], columns = [], 
                       y2={(s.y + stepI * (s.h/8)) * scale} 
                       stroke="var(--text-light)" 
                       strokeWidth="1"
-                  />
-              ))}
-              <text x={(s.x + s.w/2) * scale} y={(s.y + s.h/2) * scale} fill="var(--text-light)" fontSize="10" textAnchor="middle">UP</text>
-          </g>
+                />
+            ))}
+            <text x={(s.x + s.w/2) * scale} y={(s.y + s.h/2) * scale} fill="var(--text-light)" fontSize="16" textAnchor="middle">UP</text>
+        </g>
       ))}
 
       {/* Columns */}

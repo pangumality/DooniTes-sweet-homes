@@ -1528,6 +1528,20 @@ input[type=range]:focus::-webkit-slider-runnable-track {
   }
 }
 
+.dashboard-container.sidebar-collapsed {
+  grid-template-columns: auto 1fr;
+}
+
+.dashboard-sidebar.collapsed .dashboard-sidebar__titles,
+.dashboard-sidebar.collapsed .dashboard-sidebar__stack {
+  display: none;
+}
+
+.dashboard-sidebar.collapsed .dashboard-sidebar__header {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .dashboard-sidebar__header {
   display: flex;
   align-items: center;

@@ -21,8 +21,8 @@ export default function App() {
   
   // Unified Form State
   const [formData, setFormData] = useState({
-      width: 40,
-      depth: 60,
+      width: 60,
+    depth: 80,
       floors: 2,
       facing: "South",
       bedrooms: 2,
