@@ -253,7 +253,7 @@ const ExportPanel = forwardRef(function ExportPanel({ data, floor, reportData, s
         <button 
             className="btn-primary export-panel__btn" 
             onClick={handleDownloadZip}
-            disabled={isZipping}
+            disabled={isZipping || !hasAiRenders}
             aria-disabled={!hasAiRenders}
             title={!hasAiRenders ? "Generate both Interior and Exterior AI renders to enable download." : undefined}
             style={{ marginTop: 10, justifyContent: 'center', backgroundColor: 'var(--primary)', color: 'white' }}

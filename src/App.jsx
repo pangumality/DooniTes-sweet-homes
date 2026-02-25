@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck, MessageCircle, ArrowRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, Check, MapPin, Home, Layers, Zap, LayoutDashboard, Briefcase, Car, Leaf, Building, FileText, Image, Ruler, ClipboardList, ShieldCheck, MessageCircle, ArrowRight } from "lucide-react";
 
 import FloorPlan3D from "./FloorPlan3D"; 
 import FloorPlan2D from "./FloorPlan2D"; 
@@ -471,7 +471,6 @@ function PlannerApp() {
   const [aiError, setAiError] = useState(null);
   const [aiMode, setAiMode] = useState('exterior'); // 'exterior' | 'interior'
   const [dashboardMode, setDashboardMode] = useState('model'); // 'model' | 'ai'
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [debugImage, setDebugImage] = useState(null);
   const [roomsPanelOpen, setRoomsPanelOpen] = useState(true);
   const [dataVariants, setDataVariants] = useState(null);
@@ -1470,7 +1469,7 @@ function PlannerApp() {
                     key="step6"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className={`dashboard-container fullWidth layoutGrid ${gridClass} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
+                    className={`dashboard-container fullWidth layoutGrid ${gridClass}`}
                  >
                     {!fullScreen && (
                       <div className="dashboard-topbar section">
@@ -1687,7 +1686,11 @@ function PlannerApp() {
                         )}
                       </div>
                     )}
-                    <aside className={`glass-panel dashboard-sidebar card section layoutSidebar ${sidebarCollapsed ? 'collapsed' : ''} ${fullScreen ? 'is-hidden' : ''}`}>
+                    {generatedImages?.interior && generatedImages?.exterior && !fullScreen && (
+                      <section
+                        className="glass-panel dashboard-sidebar card section layoutSidebar finalDashboard"
+                        style={{ gridColumn: "1 / -1", marginTop: 24, maxWidth: 1000, marginLeft: "auto", marginRight: "auto" }}
+                      >
                         <div className="dashboard-sidebar__header">
                             <div className="dashboard-sidebar__icon" aria-hidden="true">
                                 <LayoutDashboard size={18} />
@@ -1696,13 +1699,6 @@ function PlannerApp() {
                                 <h3 className="dashboard-sidebar__title">Project Dashboard</h3>
                                 <p className="dashboard-sidebar__subtitle text-light">Generated plan workspace</p>
                             </div>
-                            <button 
-                                className="btn-icon iconButton" 
-                                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                            >
-                                {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-                            </button>
                         </div>
 
                         <div className="dashboard-sidebar__stack">
@@ -1787,11 +1783,18 @@ function PlannerApp() {
                             </div>
 
                         </div>
-                    </aside>
+                      </section>
+                    )}
 
-                    <section className="dashboard-main layoutMain">
+                    <section
+                      className="dashboard-main layoutMain"
+                      style={{ display: "flex", justifyContent: "center", gridColumn: "1 / -1" }}
+                    >
                         {/* 3D View / AI Render */}
-                        <div className="glass-panel dashboard-card dashboard-card--media card">
+                        <div
+                            className="glass-panel dashboard-card dashboard-card--media card"
+                            style={{ margin: "0 auto", maxWidth: 1200 }}
+                        >
                             <div className="dashboard-card__header viewHeader">
                                 <div className="viewHeader__left">
                                 <h3 className="dashboard-card__title">
