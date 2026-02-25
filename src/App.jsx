@@ -228,7 +228,7 @@ const AboutPage = () => (
         </div>
         <div className="info-card">
           <h3>Our promise</h3>
-          <p>Beautiful outputs, fast iterations, and quality checks built into every step of the workflow.</p>
+          <p>Beautiful outputs, fast iterations and quality checks built into every step of the workflow.</p>
         </div>
         <div className="info-card">
           <h3>Our team</h3>
